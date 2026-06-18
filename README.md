@@ -36,10 +36,16 @@ We publish TypeScript source files directly instead of pre-transpiled files.
 
 This package is optimized for speed. It runs close to 0ms overhead by using direct manual loops and avoiding heavy validation schemas. 
 
+<details>
+<summary><b>Click to reveal benchmark graphs</b></summary>
+<br>
+
 ![Benchmark Graph](./assets/benchmark.svg)
 
+</details>
+
 > [!TIP]
-> **Performance Boost:** With over **7.0x performance** (more than 603% faster processing), `@discordts/builders` eliminates instantiation and serialization bottlenecks entirely, running close to 0ms overhead.
+> **Performance Boost:** With over **6.7x performance** (more than 574% faster processing), `@discordts/builders` eliminates instantiation and serialization bottlenecks entirely, running close to 0ms overhead.
 
 Below are the detailed results comparing **50,000 iterations** of component construction and serialization against `@discordjs/builders`.
 
@@ -47,9 +53,9 @@ Below are the detailed results comparing **50,000 iterations** of component cons
 
 | Task | `@discordjs/builders` | `@discordts/builders` | Speed Comparison |
 | :--- | :--- | :--- | :---: |
-| **Instantiation** | ~139.7 ms | **~15.8 ms** | **8.8x faster** |
-| **Serialization** | ~42.0 ms | **~10.1 ms** | **4.2x faster** |
-| **Total** | ~181.7 ms | **~25.9 ms** | **7.0x faster** |
+| **Instantiation** | ~145.5 ms | **~16.4 ms** | **8.9x faster** |
+| **Serialization** | ~45.0 ms | **~11.9 ms** | **3.8x faster** |
+| **Total** | ~190.5 ms | **~28.3 ms** | **6.7x faster** |
 
 To run the benchmark yourself:
 ```bash

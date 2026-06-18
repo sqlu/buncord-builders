@@ -189,6 +189,8 @@ const logoMatch = logoSvg.match(/<svg[^>]*>([\s\S]*?)<\/svg>/);
 const logoContent = logoMatch ? logoMatch[1] : "";
 const cleanLogoContent = logoContent.replace(/<defs>[\s\S]*?<\/defs>/, "");
 
+const delay = 0.3;
+
 const svgTemplate = `<svg width="800" height="460" viewBox="0 0 800 460" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
   <defs>
     <clipPath id="avatarClip">
@@ -205,14 +207,12 @@ const svgTemplate = `<svg width="800" height="460" viewBox="0 0 800 460" fill="n
       <stop offset="0%" stop-color="#4E5154"/>
       <stop offset="100%" stop-color="#2B2D2F"/>
     </linearGradient>
-    <!-- Static glow kept for fallback; pulse filter replaces it on ours bars -->
     <filter id="glow-ours" x="-30%" y="-30%" width="160%" height="160%">
       <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#FF3B92" flood-opacity="0.25"/>
     </filter>
-    <!-- Pulsing glow on ours bars via SMIL-animated flood-opacity -->
     <filter id="glow-pulse" x="-40%" y="-40%" width="180%" height="180%">
       <feDropShadow dx="0" dy="4" stdDeviation="10" flood-color="#FF3B92">
-        <animate attributeName="flood-opacity" values="0.18;0.55;0.18" dur="2.4s" begin="1.3s" repeatCount="indefinite"/>
+        <animate attributeName="flood-opacity" values="0.18;0.55;0.18" dur="2.4s" begin="${1.3 + delay}s" repeatCount="indefinite"/>
       </feDropShadow>
     </filter>
   </defs>
@@ -260,19 +260,16 @@ const svgTemplate = `<svg width="800" height="460" viewBox="0 0 800 460" fill="n
     }
   </style>
 
-  <!-- Technical Grid System (Dashed, low opacity) -->
   <line x1="40" y1="110" x2="760" y2="110" stroke="#30363d" stroke-opacity="0.3" stroke-width="1" stroke-dasharray="4,4"/>
   <line x1="40" y1="190" x2="760" y2="190" stroke="#30363d" stroke-opacity="0.3" stroke-width="1" stroke-dasharray="4,4"/>
   <line x1="40" y1="270" x2="760" y2="270" stroke="#30363d" stroke-opacity="0.3" stroke-width="1" stroke-dasharray="4,4"/>
   <line x1="40" y1="350" x2="760" y2="350" stroke="#30363d" stroke-width="1.5"/>
 
-  <!-- Logo -->
   <g id="project-logo" transform="translate(40, 20) scale(0.045)">
     ${cleanLogoContent}
   </g>
   <text x="40" y="68" class="font-base" font-size="11" font-weight="900" letter-spacing="1.5" fill="#5865F2">BENCHMARKS</text>
 
-  <!-- Color Legend -->
   <g transform="translate(440, 0)">
     <rect x="0" y="32" width="12" height="12" rx="3" fill="url(#grad-djs)"/>
     <text x="18" y="42" class="font-base legend-djs">@discordjs/builders</text>
@@ -280,56 +277,41 @@ const svgTemplate = `<svg width="800" height="460" viewBox="0 0 800 460" fill="n
     <text x="173" y="42" class="font-base legend-ours">@discordts/builders (ours)</text>
   </g>
 
-  <!-- ═══════════════════════════════════════════════ -->
-  <!-- GROUP 1: Instantiation (center ${cInst})        -->
-  <!-- ═══════════════════════════════════════════════ -->
-  <text x="${cInst}" y="385" class="font-base group-title fade-in" style="animation-delay:1.05s">Instantiation</text>
-  <g class="badge-pop" style="animation-delay:1.2s">
+  <text x="${cInst}" y="385" class="font-base group-title fade-in" style="animation-delay:${1.05 + delay}s">Instantiation</text>
+  <g class="badge-pop" style="animation-delay:${1.2 + delay}s">
     <rect x="${cInst - 45}" y="394" width="90" height="18" rx="9" fill="#58a6ff" fill-opacity="0.1" stroke="#58a6ff" stroke-width="1"/>
     <text x="${cInst}" y="407" class="font-base group-speed">${instSpeed.toFixed(1)}x FASTER</text>
   </g>
 
-  <!-- DJS bar — delay 0s -->
-  <text x="${xDjsInstLbl}" y="${yDjsInst - 8}" class="font-base val-djs fade-in" style="animation-delay:0.6s">${djsInst.toFixed(1)}ms</text>
-  <path class="bar-grow" style="animation-delay:0s" d="${pathDjsInst}" fill="url(#grad-djs)"/>
+  <text x="${xDjsInstLbl}" y="${yDjsInst - 8}" class="font-base val-djs fade-in" style="animation-delay:${0.6 + delay}s">${djsInst.toFixed(1)}ms</text>
+  <path class="bar-grow" style="animation-delay:${0 + delay}s" d="${pathDjsInst}" fill="url(#grad-djs)"/>
 
-  <!-- Ours bar — delay 0.1s, pulsing glow -->
-  <text x="${xOursInstLbl}" y="${yOursInst - 8}" class="font-base val-ours fade-in" style="animation-delay:0.7s">${oursInst.toFixed(1)}ms</text>
-  <path class="bar-grow" style="animation-delay:0.1s" d="${pathOursInst}" fill="url(#grad-ours)" filter="url(#glow-pulse)"/>
+  <text x="${xOursInstLbl}" y="${yOursInst - 8}" class="font-base val-ours fade-in" style="animation-delay:${0.7 + delay}s">${oursInst.toFixed(1)}ms</text>
+  <path class="bar-grow" style="animation-delay:${0.1 + delay}s" d="${pathOursInst}" fill="url(#grad-ours)" filter="url(#glow-pulse)"/>
 
-  <!-- ═══════════════════════════════════════════════ -->
-  <!-- GROUP 2: Serialization (center ${cSer})         -->
-  <!-- ═══════════════════════════════════════════════ -->
-  <text x="${cSer}" y="385" class="font-base group-title fade-in" style="animation-delay:1.1s">Serialization</text>
-  <g class="badge-pop" style="animation-delay:1.25s">
+  <text x="${cSer}" y="385" class="font-base group-title fade-in" style="animation-delay:${1.1 + delay}s">Serialization</text>
+  <g class="badge-pop" style="animation-delay:${1.25 + delay}s">
     <rect x="${cSer - 45}" y="394" width="90" height="18" rx="9" fill="#58a6ff" fill-opacity="0.1" stroke="#58a6ff" stroke-width="1"/>
     <text x="${cSer}" y="407" class="font-base group-speed">${serSpeed.toFixed(1)}x FASTER</text>
   </g>
 
-  <!-- DJS bar — delay 0.2s -->
-  <text x="${xDjsSerLbl}" y="${yDjsSer - 8}" class="font-base val-djs fade-in" style="animation-delay:0.8s">${djsSer.toFixed(1)}ms</text>
-  <path class="bar-grow" style="animation-delay:0.2s" d="${pathDjsSer}" fill="url(#grad-djs)"/>
+  <text x="${xDjsSerLbl}" y="${yDjsSer - 8}" class="font-base val-djs fade-in" style="animation-delay:${0.8 + delay}s">${djsSer.toFixed(1)}ms</text>
+  <path class="bar-grow" style="animation-delay:${0.2 + delay}s" d="${pathDjsSer}" fill="url(#grad-djs)"/>
 
-  <!-- Ours bar — delay 0.3s, pulsing glow -->
-  <text x="${xOursSerLbl}" y="${yOursSer - 8}" class="font-base val-ours fade-in" style="animation-delay:0.9s">${oursSer.toFixed(1)}ms</text>
-  <path class="bar-grow" style="animation-delay:0.3s" d="${pathOursSer}" fill="url(#grad-ours)" filter="url(#glow-pulse)"/>
+  <text x="${xOursSerLbl}" y="${yOursSer - 8}" class="font-base val-ours fade-in" style="animation-delay:${0.9 + delay}s">${oursSer.toFixed(1)}ms</text>
+  <path class="bar-grow" style="animation-delay:${0.3 + delay}s" d="${pathOursSer}" fill="url(#grad-ours)" filter="url(#glow-pulse)"/>
 
-  <!-- ═══════════════════════════════════════════════ -->
-  <!-- GROUP 3: Total Time (center ${cTot})            -->
-  <!-- ═══════════════════════════════════════════════ -->
-  <text x="${cTot}" y="385" class="font-base group-title fade-in" style="animation-delay:1.15s">Total Time</text>
-  <g class="badge-pop" style="animation-delay:1.3s">
+  <text x="${cTot}" y="385" class="font-base group-title fade-in" style="animation-delay:${1.15 + delay}s">Total Time</text>
+  <g class="badge-pop" style="animation-delay:${1.3 + delay}s">
     <rect x="${cTot - 45}" y="394" width="90" height="18" rx="9" fill="#58a6ff" fill-opacity="0.1" stroke="#58a6ff" stroke-width="1"/>
     <text x="${cTot}" y="407" class="font-base group-speed">${totSpeed.toFixed(1)}x FASTER</text>
   </g>
 
-  <!-- DJS bar — delay 0.4s -->
-  <text x="${xDjsTotLbl}" y="${yDjsTot - 8}" class="font-base val-djs fade-in" style="animation-delay:1.0s">${djsTot.toFixed(1)}ms</text>
-  <path class="bar-grow" style="animation-delay:0.4s" d="${pathDjsTot}" fill="url(#grad-djs)"/>
+  <text x="${xDjsTotLbl}" y="${yDjsTot - 8}" class="font-base val-djs fade-in" style="animation-delay:${1.0 + delay}s">${djsTot.toFixed(1)}ms</text>
+  <path class="bar-grow" style="animation-delay:${0.4 + delay}s" d="${pathDjsTot}" fill="url(#grad-djs)"/>
 
-  <!-- Ours bar — delay 0.5s, pulsing glow -->
-  <text x="${xOursTotLbl}" y="${yOursTot - 8}" class="font-base val-ours fade-in" style="animation-delay:1.1s">${oursTot.toFixed(1)}ms</text>
-  <path class="bar-grow" style="animation-delay:0.5s" d="${pathOursTot}" fill="url(#grad-ours)" filter="url(#glow-pulse)"/>
+  <text x="${xOursTotLbl}" y="${yOursTot - 8}" class="font-base val-ours fade-in" style="animation-delay:${1.1 + delay}s">${oursTot.toFixed(1)}ms</text>
+  <path class="bar-grow" style="animation-delay:${0.5 + delay}s" d="${pathOursTot}" fill="url(#grad-ours)" filter="url(#glow-pulse)"/>
 </svg>`;
 
 await Bun.write("assets/benchmark.svg", svgTemplate);
@@ -354,7 +336,13 @@ if (startIdx !== -1 && endIdx !== -1) {
 
 This package is optimized for speed. It runs close to 0ms overhead by using direct manual loops and avoiding heavy validation schemas. 
 
+<details>
+<summary><b>Click to reveal benchmark graphs</b></summary>
+<br>
+
 ![Benchmark Graph](./assets/benchmark.svg)
+
+</details>
 
 > [!TIP]
 > **Performance Boost:** With over **${totSpeed.toFixed(1)}x performance** (more than ${percentage}% faster processing), \`@discordts/builders\` eliminates instantiation and serialization bottlenecks entirely, running close to 0ms overhead.
