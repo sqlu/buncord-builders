@@ -22,9 +22,6 @@ jobs:
       - name: Install dependencies
         run: bun install
 
-      - name: Install tests dependencies
-        run: bun install discord-api-types/v10 @discordjs/builders
-
       - name: Verify types
         run: bun run typecheck
 

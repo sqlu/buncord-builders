@@ -27,7 +27,9 @@
     "lint": "bun run typecheck"
   },
   "devDependencies": {
+    "@discordjs/builders": "^1.14.1",
     "@types/bun": "latest",
+    "discord-api-types": "^0.38.49",
     "typescript": "^5.8.3"
   },
   "peerDependencies": {
