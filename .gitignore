@@ -1,0 +1,11 @@
+node_modules/
+coverage/
+*.log
+.DS_Store
+Thumbs.db
+
+scratch*
+*issues.json
+jsdoc_issues.json
+
+test/
