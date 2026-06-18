@@ -120,16 +120,16 @@
   <text x="155" y="385" class="font-base group-title fade-in" style="animation-delay:1.05s">Instantiation</text>
   <g class="badge-pop" style="animation-delay:1.2s">
     <rect x="110" y="394" width="90" height="18" rx="9" fill="#58a6ff" fill-opacity="0.1" stroke="#58a6ff" stroke-width="1"/>
-    <text x="155" y="407" class="font-base group-speed">6.7x FASTER</text>
+    <text x="155" y="407" class="font-base group-speed">8.8x FASTER</text>
   </g>
 
   <!-- DJS bar — delay 0s -->
-  <text x="122" y="172" class="font-base val-djs fade-in" style="animation-delay:0.6s">161.2ms</text>
-  <path class="bar-grow" style="animation-delay:0s" d="M 94,188 A 8,8 0 0 1 102,180 L 142,180 A 8,8 0 0 1 150,188 L 150,350 L 94,350 Z" fill="url(#grad-djs)"/>
+  <text x="122" y="168" class="font-base val-djs fade-in" style="animation-delay:0.6s">160.2ms</text>
+  <path class="bar-grow" style="animation-delay:0s" d="M 94,184 A 8,8 0 0 1 102,176 L 142,176 A 8,8 0 0 1 150,184 L 150,350 L 94,350 Z" fill="url(#grad-djs)"/>
 
   <!-- Ours bar — delay 0.1s, pulsing glow -->
-  <text x="188" y="317" class="font-base val-ours fade-in" style="animation-delay:0.7s">24.0ms</text>
-  <path class="bar-grow" style="animation-delay:0.1s" d="M 160,333 A 8,8 0 0 1 168,325 L 208,325 A 8,8 0 0 1 216,333 L 216,350 L 160,350 Z" fill="url(#grad-ours)" filter="url(#glow-pulse)"/>
+  <text x="188" y="322" class="font-base val-ours fade-in" style="animation-delay:0.7s">18.2ms</text>
+  <path class="bar-grow" style="animation-delay:0.1s" d="M 160,338 A 8,8 0 0 1 168,330 L 208,330 A 8,8 0 0 1 216,338 L 216,350 L 160,350 Z" fill="url(#grad-ours)" filter="url(#glow-pulse)"/>
 
   <!-- ═══════════════════════════════════════════════ -->
   <!-- GROUP 2: Serialization (center 400)         -->
@@ -137,15 +137,15 @@
   <text x="400" y="385" class="font-base group-title fade-in" style="animation-delay:1.1s">Serialization</text>
   <g class="badge-pop" style="animation-delay:1.25s">
     <rect x="355" y="394" width="90" height="18" rx="9" fill="#58a6ff" fill-opacity="0.1" stroke="#58a6ff" stroke-width="1"/>
-    <text x="400" y="407" class="font-base group-speed">3.8x FASTER</text>
+    <text x="400" y="407" class="font-base group-speed">4.4x FASTER</text>
   </g>
 
   <!-- DJS bar — delay 0.2s -->
-  <text x="367" y="292" class="font-base val-djs fade-in" style="animation-delay:0.8s">47.8ms</text>
-  <path class="bar-grow" style="animation-delay:0.2s" d="M 339,308 A 8,8 0 0 1 347,300 L 387,300 A 8,8 0 0 1 395,308 L 395,350 L 339,350 Z" fill="url(#grad-djs)"/>
+  <text x="367" y="296" class="font-base val-djs fade-in" style="animation-delay:0.8s">42.3ms</text>
+  <path class="bar-grow" style="animation-delay:0.2s" d="M 339,312 A 8,8 0 0 1 347,304 L 387,304 A 8,8 0 0 1 395,312 L 395,350 L 339,350 Z" fill="url(#grad-djs)"/>
 
   <!-- Ours bar — delay 0.3s, pulsing glow -->
-  <text x="433" y="326" class="font-base val-ours fade-in" style="animation-delay:0.9s">12.6ms</text>
+  <text x="433" y="326" class="font-base val-ours fade-in" style="animation-delay:0.9s">9.6ms</text>
   <path class="bar-grow" style="animation-delay:0.3s" d="M 405,342 A 8,8 0 0 1 413,334 L 453,334 A 8,8 0 0 1 461,342 L 461,350 L 405,350 Z" fill="url(#grad-ours)" filter="url(#glow-pulse)"/>
 
   <!-- ═══════════════════════════════════════════════ -->
@@ -154,14 +154,14 @@
   <text x="645" y="385" class="font-base group-title fade-in" style="animation-delay:1.15s">Total Time</text>
   <g class="badge-pop" style="animation-delay:1.3s">
     <rect x="600" y="394" width="90" height="18" rx="9" fill="#58a6ff" fill-opacity="0.1" stroke="#58a6ff" stroke-width="1"/>
-    <text x="645" y="407" class="font-base group-speed">5.7x FASTER</text>
+    <text x="645" y="407" class="font-base group-speed">7.3x FASTER</text>
   </g>
 
   <!-- DJS bar — delay 0.4s -->
-  <text x="612" y="122" class="font-base val-djs fade-in" style="animation-delay:1.0s">209.0ms</text>
+  <text x="612" y="122" class="font-base val-djs fade-in" style="animation-delay:1.0s">202.6ms</text>
   <path class="bar-grow" style="animation-delay:0.4s" d="M 584,138 A 8,8 0 0 1 592,130 L 632,130 A 8,8 0 0 1 640,138 L 640,350 L 584,350 Z" fill="url(#grad-djs)"/>
 
   <!-- Ours bar — delay 0.5s, pulsing glow -->
-  <text x="678" y="304" class="font-base val-ours fade-in" style="animation-delay:1.1s">36.5ms</text>
-  <path class="bar-grow" style="animation-delay:0.5s" d="M 650,320 A 8,8 0 0 1 658,312 L 698,312 A 8,8 0 0 1 706,320 L 706,350 L 650,350 Z" fill="url(#grad-ours)" filter="url(#glow-pulse)"/>
+  <text x="678" y="312" class="font-base val-ours fade-in" style="animation-delay:1.1s">27.8ms</text>
+  <path class="bar-grow" style="animation-delay:0.5s" d="M 650,328 A 8,8 0 0 1 658,320 L 698,320 A 8,8 0 0 1 706,328 L 706,350 L 650,350 Z" fill="url(#grad-ours)" filter="url(#glow-pulse)"/>
 </svg>
