@@ -43,7 +43,7 @@ This package is optimized for speed. It runs close to 0ms overhead by using dire
 ![Benchmark Graph](./assets/benchmark.svg)
 
 > [!TIP]
-> **Performance Boost:** With over **6.9x performance** (more than 594% faster processing), `@discordts/builders` eliminates instantiation and serialization bottlenecks entirely, running close to 0ms overhead.
+> **Performance Boost:** With over **6.8x performance** (more than 576% faster processing), `@discordts/builders` eliminates instantiation and serialization bottlenecks entirely, running close to 0ms overhead.
 
 Below are the detailed results comparing **50,000 iterations** of component construction and serialization against `@discordjs/builders`.
 
@@ -51,9 +51,9 @@ Below are the detailed results comparing **50,000 iterations** of component cons
 
 | Task | `@discordjs/builders` | `@discordts/builders` | Speed Comparison |
 | :--- | :--- | :--- | :---: |
-| **Instantiation** | ~150.9 ms | **~19.1 ms** | **7.9x faster** |
-| **Serialization** | ~38.0 ms | **~8.1 ms** | **4.7x faster** |
-| **Total** | ~188.9 ms | **~27.2 ms** | **6.9x faster** |
+| **Instantiation** | ~171.7 ms | **~16.2 ms** | **10.6x faster** |
+| **Serialization** | ~40.0 ms | **~15.2 ms** | **2.6x faster** |
+| **Total** | ~211.8 ms | **~31.3 ms** | **6.8x faster** |
 
 To run the benchmark yourself:
 ```bash
@@ -64,32 +64,46 @@ bun run benchmark:ci
 ## Component Architecture
 
 ```mermaid
-mindmap
-)@discordts/builders(
-  Messages
-    ContainerBuilder
-      SectionBuilder
-        ThumbnailBuilder
-        ButtonBuilder
-        TextDisplayBuilder
-      MediaGalleryBuilder
-      SeparatorBuilder
-      FileBuilder
-    ActionRowBuilder
-      ButtonBuilder
-      Select Menus
-  Modals
-    LabelBuilder
-      TextInputBuilder
-      RadioGroupBuilder
-      CheckboxGroupBuilder
-      CheckboxBuilder
-      FileUploadBuilder
-      Select Menus
-    ActionRowBuilder
-      TextInputBuilder
-      Select Menus
-    TextDisplayBuilder
+graph LR
+    classDef msgRoot fill:#5865F2,color:#fff,stroke:none,font-weight:bold,rx:5px,ry:5px
+    classDef modRoot fill:#FF3B92,color:#fff,stroke:none,font-weight:bold,rx:5px,ry:5px
+    classDef layout fill:#2b2d2f,color:#fff,stroke:#4f545c,stroke-width:2px
+    classDef content fill:#202225,color:#dcddde,stroke:#36393f,stroke-width:1px
+    classDef selectGroup fill:#2f3136,color:#fff,stroke:#FF3B92,stroke-width:2px,stroke-dasharray: 5 5
+
+    MSG([Messages]):::msgRoot --> Cont[ContainerBuilder]:::layout
+    MSG --> RowMsg[ActionRowBuilder]:::layout
+
+    Cont --> Sec[SectionBuilder]:::layout
+    Cont --> RowCont[ActionRowBuilder]:::layout
+    Cont --> Media[MediaGalleryBuilder]:::content
+    Cont --> Sep[SeparatorBuilder]:::content
+    Cont --> File[FileBuilder]:::content
+    Cont --> TxtMsg[TextDisplayBuilder]:::content
+
+    Sec --> Thumb[ThumbnailBuilder]:::content
+    Sec --> BtnSec[ButtonBuilder]:::content
+    Sec --> TxtSec[TextDisplayBuilder]:::content
+    
+    RowMsg --> BtnRowMsg[ButtonBuilder]:::content
+    RowMsg --> SelMsg[[Select Menus]]:::selectGroup
+
+    RowCont --> BtnRowCont[ButtonBuilder]:::content
+    RowCont --> SelCont[[Select Menus]]:::selectGroup
+
+    MOD([Modals]):::modRoot --> Lbl[LabelBuilder]:::layout
+    MOD --> RowMod[ActionRowBuilder]:::layout
+    MOD --> TxtMod[TextDisplayBuilder]:::content
+
+    Lbl --> TxtInLbl[TextInputBuilder]:::content
+    Lbl --> Rad[RadioGroupBuilder]:::content
+    Lbl --> ChkGrp[CheckboxGroupBuilder]:::content
+    Lbl --> Chk[CheckboxBuilder]:::content
+    Lbl --> FileUp[FileUploadBuilder]:::content
+    Lbl --> SelLbl[[Select Menus]]:::selectGroup
+
+    RowMod --> TxtInRow[TextInputBuilder]:::content
+    RowMod --> SelMod[[Select Menus]]:::selectGroup
 ```
 
 ## Discord Component Flags
