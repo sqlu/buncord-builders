@@ -112,36 +112,36 @@
   <text x="155" y="385" class="font-base group-title fade-in" style="animation-delay:1.9500000000000002s">Instantiation</text>
   <g class="badge-pop" style="animation-delay:2.1s">
     <rect x="110" y="394" width="90" height="18" rx="9" fill="#58a6ff" fill-opacity="0.1" stroke="#58a6ff" stroke-width="1"/>
-    <text x="155" y="407" class="font-base group-speed">7.7x FASTER</text>
+    <text x="155" y="407" class="font-base group-speed">10.1x FASTER</text>
   </g>
 
-  <text x="122" y="170" class="font-base val-djs fade-in" style="animation-delay:1.5s">142.9ms</text>
+  <text x="122" y="170" class="font-base val-djs fade-in" style="animation-delay:1.5s">156.9ms</text>
   <path class="bar-grow" style="animation-delay:0.9s" d="M 94,186 A 8,8 0 0 1 102,178 L 142,178 A 8,8 0 0 1 150,186 L 150,350 L 94,350 Z" fill="url(#grad-djs)"/>
 
-  <text x="188" y="319" class="font-base val-ours fade-in" style="animation-delay:1.6s">18.7ms</text>
-  <path class="bar-grow" style="animation-delay:1s" d="M 160,335 A 8,8 0 0 1 168,327 L 208,327 A 8,8 0 0 1 216,335 L 216,350 L 160,350 Z" fill="url(#grad-ours)" filter="url(#glow-pulse)"/>
+  <text x="188" y="325" class="font-base val-ours fade-in" style="animation-delay:1.6s">15.5ms</text>
+  <path class="bar-grow" style="animation-delay:1s" d="M 160,341 A 8,8 0 0 1 168,333 L 208,333 A 8,8 0 0 1 216,341 L 216,350 L 160,350 Z" fill="url(#grad-ours)" filter="url(#glow-pulse)"/>
 
   <text x="400" y="385" class="font-base group-title fade-in" style="animation-delay:2s">Serialization</text>
   <g class="badge-pop" style="animation-delay:2.15s">
     <rect x="355" y="394" width="90" height="18" rx="9" fill="#58a6ff" fill-opacity="0.1" stroke="#58a6ff" stroke-width="1"/>
-    <text x="400" y="407" class="font-base group-speed">3.0x FASTER</text>
+    <text x="400" y="407" class="font-base group-speed">3.2x FASTER</text>
   </g>
 
-  <text x="367" y="294" class="font-base val-djs fade-in" style="animation-delay:1.7000000000000002s">39.4ms</text>
+  <text x="367" y="294" class="font-base val-djs fade-in" style="animation-delay:1.7000000000000002s">43.3ms</text>
   <path class="bar-grow" style="animation-delay:1.1s" d="M 339,310 A 8,8 0 0 1 347,302 L 387,302 A 8,8 0 0 1 395,310 L 395,350 L 339,350 Z" fill="url(#grad-djs)"/>
 
-  <text x="433" y="326" class="font-base val-ours fade-in" style="animation-delay:1.8s">13.3ms</text>
+  <text x="433" y="326" class="font-base val-ours fade-in" style="animation-delay:1.8s">13.4ms</text>
   <path class="bar-grow" style="animation-delay:1.2s" d="M 405,342 A 8,8 0 0 1 413,334 L 453,334 A 8,8 0 0 1 461,342 L 461,350 L 405,350 Z" fill="url(#grad-ours)" filter="url(#glow-pulse)"/>
 
   <text x="645" y="385" class="font-base group-title fade-in" style="animation-delay:2.05s">Total Time</text>
   <g class="badge-pop" style="animation-delay:2.2s">
     <rect x="600" y="394" width="90" height="18" rx="9" fill="#58a6ff" fill-opacity="0.1" stroke="#58a6ff" stroke-width="1"/>
-    <text x="645" y="407" class="font-base group-speed">5.7x FASTER</text>
+    <text x="645" y="407" class="font-base group-speed">6.9x FASTER</text>
   </g>
 
-  <text x="612" y="122" class="font-base val-djs fade-in" style="animation-delay:1.9s">182.3ms</text>
+  <text x="612" y="122" class="font-base val-djs fade-in" style="animation-delay:1.9s">200.2ms</text>
   <path class="bar-grow" style="animation-delay:1.3s" d="M 584,138 A 8,8 0 0 1 592,130 L 632,130 A 8,8 0 0 1 640,138 L 640,350 L 584,350 Z" fill="url(#grad-djs)"/>
 
-  <text x="678" y="303" class="font-base val-ours fade-in" style="animation-delay:2s">32.0ms</text>
-  <path class="bar-grow" style="animation-delay:1.4s" d="M 650,319 A 8,8 0 0 1 658,311 L 698,311 A 8,8 0 0 1 706,319 L 706,350 L 650,350 Z" fill="url(#grad-ours)" filter="url(#glow-pulse)"/>
+  <text x="678" y="310" class="font-base val-ours fade-in" style="animation-delay:2s">28.9ms</text>
+  <path class="bar-grow" style="animation-delay:1.4s" d="M 650,326 A 8,8 0 0 1 658,318 L 698,318 A 8,8 0 0 1 706,326 L 706,350 L 650,350 Z" fill="url(#grad-ours)" filter="url(#glow-pulse)"/>
 </svg>
