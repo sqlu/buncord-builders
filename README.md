@@ -40,13 +40,7 @@ TypeScript source files are published directly no pre-transpiled output.
 
 This package is optimized for speed. It runs close to 0ms overhead by using direct manual loops and avoiding heavy validation schemas. 
 
-<details>
-<summary><b>Click to reveal benchmark graphs</b></summary>
-<br>
-
 ![Benchmark Graph](./assets/benchmark.svg)
-
-</details>
 
 > [!TIP]
 > **Performance Boost:** With over **7.6x performance** (more than 665% faster processing), `@discordts/builders` eliminates instantiation and serialization bottlenecks entirely, running close to 0ms overhead.
@@ -123,14 +117,6 @@ const flags = MessageFlags.IsComponentsV2;
 When this flag is set, Discord treats components as the message body. Use `TextDisplayBuilder` and `ContainerBuilder` instead of relying on `content` or `embeds`.
 
 ## Component Coverage
-
-```mermaid
-%%{init: {'theme': 'dark', 'themeVariables': {'primaryColor': '#5865F2'}}}%%
-pie title Discord's Component Support
-    "Message Components" : 14
-    "Modal-only Components" : 5
-    "Non-bot Types (enum only)" : 2
-```
 
 | Type | ID | Available in |
 |:-----|:--:|:------------|

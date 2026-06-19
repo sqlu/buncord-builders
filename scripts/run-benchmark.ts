@@ -336,13 +336,7 @@ if (startIdx !== -1 && endIdx !== -1) {
 
 This package is optimized for speed. It runs close to 0ms overhead by using direct manual loops and avoiding heavy validation schemas. 
 
-<details>
-<summary><b>Click to reveal benchmark graphs</b></summary>
-<br>
-
 ![Benchmark Graph](./assets/benchmark.svg)
-
-</details>
 
 > [!TIP]
 > **Performance Boost:** With over **${totSpeed.toFixed(1)}x performance** (more than ${percentage}% faster processing), \`@discordts/builders\` eliminates instantiation and serialization bottlenecks entirely, running close to 0ms overhead.
