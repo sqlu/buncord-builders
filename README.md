@@ -64,54 +64,32 @@ bun run benchmark:ci
 ## Component Architecture
 
 ```mermaid
-graph LR
-    classDef root fill:#5865F2,color:#fff,stroke:none,font-weight:bold,rx:5px,ry:5px
-    classDef modal fill:#FF3B92,color:#fff,stroke:none,font-weight:bold,rx:5px,ry:5px
-    classDef layout fill:#2b2d2f,color:#fff,stroke:#4f545c,stroke-width:2px
-    classDef content fill:#202225,color:#dcddde,stroke:#36393f,stroke-width:1px
-    classDef selectGroup fill:#2f3136,color:#fff,stroke:#FF3B92,stroke-width:2px,stroke-dasharray: 5 5
-
-    MSG([Messages]):::root
-    MOD([Modals]):::modal
-
-    Cont[ContainerBuilder]:::layout
-    Row[ActionRowBuilder]:::layout
-    Sec[SectionBuilder]:::layout
-    Lbl[LabelBuilder]:::layout
-
-    MSG --> Cont
-    MSG --> Row
-    MOD --> Lbl
-    MOD --> Txt[TextDisplayBuilder]:::content
-    MOD --> Row
-
-    Cont --> Sec
-    Cont --> Row
-    Cont --> Media[MediaGalleryBuilder]:::content
-    Cont --> Sep[SeparatorBuilder]:::content
-    Cont --> Txt
-    Cont --> File[FileBuilder]:::content
-
-    Sec --> Txt
-    Sec --> Thumb[ThumbnailBuilder]:::content
-    Sec --> Btn[ButtonBuilder]:::content
-
-    Row --> Btn
-    Row --> Sel[[Select Menus]]:::selectGroup
-    Row --> TxtIn[TextInputBuilder]:::content
-
-    Lbl --> TxtIn
-    Lbl --> Rad[RadioGroupBuilder]:::content
-    Lbl --> ChkGrp[CheckboxGroupBuilder]:::content
-    Lbl --> Chk[CheckboxBuilder]:::content
-    Lbl --> FileUp[FileUploadBuilder]:::content
-    Lbl --> Sel
-
-    Sel -.-> S_Str[StringSelectMenuBuilder]:::content
-    Sel -.-> S_Usr[UserSelectMenuBuilder]:::content
-    Sel -.-> S_Rol[RoleSelectMenuBuilder]:::content
-    Sel -.-> S_Men[MentionableSelectMenuBuilder]:::content
-    Sel -.-> S_Chn[ChannelSelectMenuBuilder]:::content
+mindmap
+)@discordts/builders(
+  Messages
+    ContainerBuilder
+      SectionBuilder
+        ThumbnailBuilder
+        ButtonBuilder
+        TextDisplayBuilder
+      MediaGalleryBuilder
+      SeparatorBuilder
+      FileBuilder
+    ActionRowBuilder
+      ButtonBuilder
+      Select Menus
+  Modals
+    LabelBuilder
+      TextInputBuilder
+      RadioGroupBuilder
+      CheckboxGroupBuilder
+      CheckboxBuilder
+      FileUploadBuilder
+      Select Menus
+    ActionRowBuilder
+      TextInputBuilder
+      Select Menus
+    TextDisplayBuilder
 ```
 
 ## Discord Component Flags
