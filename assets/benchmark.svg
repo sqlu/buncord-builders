@@ -112,36 +112,36 @@
   <text x="155" y="385" class="font-base group-title fade-in" style="animation-delay:1.9500000000000002s">Instantiation</text>
   <g class="badge-pop" style="animation-delay:2.1s">
     <rect x="110" y="394" width="90" height="18" rx="9" fill="#58a6ff" fill-opacity="0.1" stroke="#58a6ff" stroke-width="1"/>
-    <text x="155" y="407" class="font-base group-speed">10.6x FASTER</text>
+    <text x="155" y="407" class="font-base group-speed">7.9x FASTER</text>
   </g>
 
-  <text x="122" y="164" class="font-base val-djs fade-in" style="animation-delay:1.5s">171.7ms</text>
-  <path class="bar-grow" style="animation-delay:0.9s" d="M 94,180 A 8,8 0 0 1 102,172 L 142,172 A 8,8 0 0 1 150,180 L 150,350 L 94,350 Z" fill="url(#grad-djs)"/>
+  <text x="122" y="166" class="font-base val-djs fade-in" style="animation-delay:1.5s">150.9ms</text>
+  <path class="bar-grow" style="animation-delay:0.9s" d="M 94,182 A 8,8 0 0 1 102,174 L 142,174 A 8,8 0 0 1 150,182 L 150,350 L 94,350 Z" fill="url(#grad-djs)"/>
 
-  <text x="188" y="325" class="font-base val-ours fade-in" style="animation-delay:1.6s">16.2ms</text>
-  <path class="bar-grow" style="animation-delay:1s" d="M 160,341 A 8,8 0 0 1 168,333 L 208,333 A 8,8 0 0 1 216,341 L 216,350 L 160,350 Z" fill="url(#grad-ours)" filter="url(#glow-pulse)"/>
+  <text x="188" y="320" class="font-base val-ours fade-in" style="animation-delay:1.6s">19.1ms</text>
+  <path class="bar-grow" style="animation-delay:1s" d="M 160,336 A 8,8 0 0 1 168,328 L 208,328 A 8,8 0 0 1 216,336 L 216,350 L 160,350 Z" fill="url(#grad-ours)" filter="url(#glow-pulse)"/>
 
   <text x="400" y="385" class="font-base group-title fade-in" style="animation-delay:2s">Serialization</text>
   <g class="badge-pop" style="animation-delay:2.15s">
     <rect x="355" y="394" width="90" height="18" rx="9" fill="#58a6ff" fill-opacity="0.1" stroke="#58a6ff" stroke-width="1"/>
-    <text x="400" y="407" class="font-base group-speed">2.6x FASTER</text>
+    <text x="400" y="407" class="font-base group-speed">4.7x FASTER</text>
   </g>
 
-  <text x="367" y="300" class="font-base val-djs fade-in" style="animation-delay:1.7000000000000002s">40.0ms</text>
-  <path class="bar-grow" style="animation-delay:1.1s" d="M 339,316 A 8,8 0 0 1 347,308 L 387,308 A 8,8 0 0 1 395,316 L 395,350 L 339,350 Z" fill="url(#grad-djs)"/>
+  <text x="367" y="298" class="font-base val-djs fade-in" style="animation-delay:1.7000000000000002s">38.0ms</text>
+  <path class="bar-grow" style="animation-delay:1.1s" d="M 339,314 A 8,8 0 0 1 347,306 L 387,306 A 8,8 0 0 1 395,314 L 395,350 L 339,350 Z" fill="url(#grad-djs)"/>
 
-  <text x="433" y="326" class="font-base val-ours fade-in" style="animation-delay:1.8s">15.2ms</text>
+  <text x="433" y="326" class="font-base val-ours fade-in" style="animation-delay:1.8s">8.1ms</text>
   <path class="bar-grow" style="animation-delay:1.2s" d="M 405,342 A 8,8 0 0 1 413,334 L 453,334 A 8,8 0 0 1 461,342 L 461,350 L 405,350 Z" fill="url(#grad-ours)" filter="url(#glow-pulse)"/>
 
   <text x="645" y="385" class="font-base group-title fade-in" style="animation-delay:2.05s">Total Time</text>
   <g class="badge-pop" style="animation-delay:2.2s">
     <rect x="600" y="394" width="90" height="18" rx="9" fill="#58a6ff" fill-opacity="0.1" stroke="#58a6ff" stroke-width="1"/>
-    <text x="645" y="407" class="font-base group-speed">6.8x FASTER</text>
+    <text x="645" y="407" class="font-base group-speed">6.9x FASTER</text>
   </g>
 
-  <text x="612" y="122" class="font-base val-djs fade-in" style="animation-delay:1.9s">211.8ms</text>
+  <text x="612" y="122" class="font-base val-djs fade-in" style="animation-delay:1.9s">188.9ms</text>
   <path class="bar-grow" style="animation-delay:1.3s" d="M 584,138 A 8,8 0 0 1 592,130 L 632,130 A 8,8 0 0 1 640,138 L 640,350 L 584,350 Z" fill="url(#grad-djs)"/>
 
-  <text x="678" y="309" class="font-base val-ours fade-in" style="animation-delay:2s">31.3ms</text>
-  <path class="bar-grow" style="animation-delay:1.4s" d="M 650,325 A 8,8 0 0 1 658,317 L 698,317 A 8,8 0 0 1 706,325 L 706,350 L 650,350 Z" fill="url(#grad-ours)" filter="url(#glow-pulse)"/>
+  <text x="678" y="310" class="font-base val-ours fade-in" style="animation-delay:2s">27.2ms</text>
+  <path class="bar-grow" style="animation-delay:1.4s" d="M 650,326 A 8,8 0 0 1 658,318 L 698,318 A 8,8 0 0 1 706,326 L 706,350 L 650,350 Z" fill="url(#grad-ours)" filter="url(#glow-pulse)"/>
 </svg>
