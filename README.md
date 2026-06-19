@@ -57,10 +57,8 @@ Below are the detailed results comparing **50,000 iterations** of component cons
 | **Instantiation** | ~164.3 ms | **~16.5 ms** | **10.0x faster** |
 | **Serialization** | ~47.4 ms | **~14.9 ms** | **3.2x faster** |
 | **Total** | ~211.6 ms | **~31.3 ms** | **6.8x faster** |
-
-To run the benchmark yourself:
-```bash
-bun run benchmark:ci
+214.7 ms | **~30.1 ms** | **7.1x faster** |
+k:ci
 ```
 > The SVG and README table are only regenerated automatically by CI on push. Running locally outputs results to the console only.
 
@@ -72,44 +70,30 @@ graph LR
     classDef modRoot fill:#FF3B92,color:#fff,stroke:none,font-weight:bold,rx:5px,ry:5px
     classDef layout fill:#2b2d2f,color:#fff,stroke:#4f545c,stroke-width:2px
     classDef content fill:#202225,color:#dcddde,stroke:#36393f,stroke-width:1px
-    classDef selectGroup fill:#2f3136,color:#fff,stroke:#FF3B92,stroke-width:2px,stroke-dasharray: 5 5
 
+    %% --- ARBRE DES MESSAGES ---
     MSG([Messages]):::msgRoot --> Cont[ContainerBuilder]:::layout
     MSG --> RowMsg[ActionRowBuilder]:::layout
 
     Cont --> Sec[SectionBuilder]:::layout
     Cont --> RowCont[ActionRowBuilder]:::layout
-    Cont --> Media[MediaGalleryBuilder]:::content
-    Cont --> Sep[SeparatorBuilder]:::content
-    Cont --> File[FileBuilder]:::content
-    Cont --> TxtMsg[TextDisplayBuilder]:::content
+    Cont --> ContContent["MediaGalleryBuilder<br>SeparatorBuilder<br>FileBuilder<br>TextDisplayBuilder"]:::content
 
-    Sec --> Thumb[ThumbnailBuilder]:::content
-    Sec --> BtnSec[ButtonBuilder]:::content
-    Sec --> TxtSec[TextDisplayBuilder]:::content
+    Sec --> SecContent["ThumbnailBuilder<br>ButtonBuilder<br>TextDisplayBuilder"]:::content
     
-    RowMsg --> BtnRowMsg[ButtonBuilder]:::content
-    RowMsg --> SelMsg[[Select Menus]]:::selectGroup
+    RowMsg --> RowMsgContent["ButtonBuilder<br>StringSelectMenuBuilder<br>UserSelectMenuBuilder<br>RoleSelectMenuBuilder<br>MentionableSelectMenuBuilder<br>ChannelSelectMenuBuilder"]:::content
 
-    RowCont --> BtnRowCont[ButtonBuilder]:::content
-    RowCont --> SelCont[[Select Menus]]:::selectGroup
+    RowCont --> RowContContent["ButtonBuilder<br>StringSelectMenuBuilder<br>UserSelectMenuBuilder<br>RoleSelectMenuBuilder<br>MentionableSelectMenuBuilder<br>ChannelSelectMenuBuilder"]:::content
 
+    %% --- ARBRE DES MODALS ---
     MOD([Modals]):::modRoot --> Lbl[LabelBuilder]:::layout
     MOD --> RowMod[ActionRowBuilder]:::layout
     MOD --> TxtMod[TextDisplayBuilder]:::content
 
-    Lbl --> TxtInLbl[TextInputBuilder]:::content
-    Lbl --> Rad[RadioGroupBuilder]:::content
-    Lbl --> ChkGrp[CheckboxGroupBuilder]:::content
-    Lbl --> Chk[CheckboxBuilder]:::content
-    Lbl --> FileUp[FileUploadBuilder]:::content
-    Lbl --> SelLbl[[Select Menus]]:::selectGroup
+    Lbl --> LblContent["TextInputBuilder<br>RadioGroupBuilder<br>CheckboxGroupBuilder<br>CheckboxBuilder<br>FileUploadBuilder<br>StringSelectMenuBuilder<br>UserSelectMenuBuilder<br>RoleSelectMenuBuilder<br>MentionableSelectMenuBuilder<br>ChannelSelectMenuBuilder"]:::content
 
-    RowMod --> TxtInRow[TextInputBuilder]:::content
-    RowMod --> SelMod[[Select Menus]]:::selectGroup
+    RowMod --> RowModContent["TextInputBuilder<br>StringSelectMenuBuilder<br>UserSelectMenuBuilder<br>RoleSelectMenuBuilder<br>MentionableSelectMenuBuilder<br>ChannelSelectMenuBuilder"]:::content
 ```
-
-## Discord Component Flags
 
 Components V2 messages must be sent with the `IS_COMPONENTS_V2` message flag:
 
