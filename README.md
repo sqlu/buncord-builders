@@ -1,10 +1,10 @@
 <div align="center">
-  <img src="./assets/logo.svg" alt="@discordts/builders logo" width="320" />
+  <img src="./assets/logo.svg" alt="@buncord/builders logo" width="320" />
 
   <h3>Type-safe Discord Components builders for Bun</h3>
 
   <p>
-    <a href="https://npmjs.com/package/@discordts/builders"><img src="https://img.shields.io/npm/v/@discordts/builders?color=FF3B92&style=flat-square" alt="npm" /></a>
+    <a href="https://npmjs.com/package/@buncord/builders"><img src="https://img.shields.io/npm/v/@buncord/builders?color=FF3B92&style=flat-square" alt="npm" /></a>
     <a href="https://bun.sh"><img src="https://img.shields.io/badge/bun-%3E%3D1.1.0-orange?style=flat-square&logo=bun" alt="Bun" /></a>
     <a href="https://www.typescriptlang.org"><img src="https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript" alt="TypeScript" /></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-22c55e?style=flat-square" alt="License: MIT" /></a>
@@ -23,7 +23,7 @@
 
 Traditional Discord component builders process and transpile complex validation logic *at runtime* on every single serialization. This creates noticeable bottlenecks in high-scale bots.
 
-`@discordts/builders` solves this by shifting safety checks to the **type level (compile-time)**. You get a frictionless, zero-dependency, ultra-lightweight library designed natively for Bun that serializes components **and is way faster**.
+`@buncord/builders` solves this by shifting safety checks to the **type level (compile-time)**. You get a frictionless, zero-dependency, ultra-lightweight library designed natively for Bun that serializes components **and is way faster**.
 
 ---
 
@@ -40,7 +40,7 @@ Traditional Discord component builders process and transpile complex validation 
 
 ### Install
 ```bash
-bun add @discordts/builders
+bun add @buncord/builders
 ```
 *Requirements: Bun ≥ 1.1.0 and TypeScript 5.x*
 
@@ -51,17 +51,17 @@ This package is optimized for speed. It runs close to 0ms overhead by using dire
 ![Benchmark Graph](./assets/benchmark.svg)
 
 > [!TIP]
-> **Performance Boost:** With over **7.6x performance** (more than 664% faster processing), `@discordts/builders` eliminates instantiation and serialization bottlenecks entirely, running close to 0ms overhead.
+> **Performance Boost:** With over **7.6x performance** (more than 661% faster processing), `@buncord/builders` eliminates instantiation and serialization bottlenecks entirely, running close to 0ms overhead.
 
 Below are the detailed results comparing **50,000 iterations** of component construction and serialization against `@discordjs/builders`.
 
 *Last Benchmarked: June 19, 2026*
 
-| Task | `@discordjs/builders` | `@discordts/builders` | Speed Comparison |
+| Task | `@discordjs/builders` | `@buncord/builders` | Speed Comparison |
 | :--- | :--- | :--- | :---: |
-| **Instantiation** | ~138.6 ms | **~13.8 ms** | **10.1x faster** |
-| **Serialization** | ~38.5 ms | **~9.4 ms** | **4.1x faster** |
-| **Total** | ~177.1 ms | **~23.2 ms** | **7.6x faster** |
+| **Instantiation** | ~148.9 ms | **~15.2 ms** | **9.8x faster** |
+| **Serialization** | ~42.3 ms | **~10.0 ms** | **4.2x faster** |
+| **Total** | ~191.2 ms | **~25.1 ms** | **7.6x faster** |
 
 ## Component Architecture
 
@@ -97,7 +97,7 @@ graph LR
 Components V2 messages must be sent with the `IS_COMPONENTS_V2` message flag:
 
 ```ts
-import { MessageFlags } from '@discordts/builders';
+import { MessageFlags } from '@buncord/builders';
 const flags = MessageFlags.IsComponentsV2;
 ```
 
@@ -145,7 +145,7 @@ All runnable examples live in [`/exemples`](./exemples):
 Use `toJSON()` for eager throwing on violations. Use `BaseComponent.auditTree()` for non-blocking diagnostics with structured codes, paths, and fix suggestions. See [`exemples/validation.ts`](./exemples/validation.ts).
 
 ```ts
-import { BaseComponent } from '@discordts/builders';
+import { BaseComponent } from '@buncord/builders';
 const warnings = BaseComponent.auditTree(payload);
 
 const issues = BaseComponent.auditTree(payload, { structured: true });

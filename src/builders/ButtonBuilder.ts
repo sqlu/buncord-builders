@@ -83,7 +83,7 @@ export interface ButtonBuilderInstance<CustomId extends string>
  * ```ts
  * const button = new ButtonBuilder({
  *   customId: 'repo',
- *   label: 'Star discordts-builders',
+ *   label: 'Star buncord-builders',
  *   style: ButtonStyle.Primary,
  * });
  * ```

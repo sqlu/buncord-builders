@@ -122,13 +122,13 @@ const serSpeed = djsSer / oursSer;
 const totSpeed = djsTot / oursTot;
 
 console.log(`[Instantiation] @discordjs/builders : ${djsInst.toFixed(2)} ms`);
-console.log(`[Instantiation] @discordts/builders : ${oursInst.toFixed(2)} ms`);
+console.log(`[Instantiation] @buncord/builders : ${oursInst.toFixed(2)} ms`);
 console.log(`Ratio Instantiation                 : ${instSpeed.toFixed(1)}x faster!`);
 console.log(`\n[Serialization] @discordjs/builders : ${djsSer.toFixed(2)} ms`);
-console.log(`[Serialization] @discordts/builders : ${oursSer.toFixed(2)} ms`);
+console.log(`[Serialization] @buncord/builders : ${oursSer.toFixed(2)} ms`);
 console.log(`Ratio Serialization                 : ${serSpeed.toFixed(1)}x faster!`);
 console.log(`\n[Total] @discordjs/builders         : ${djsTot.toFixed(2)} ms`);
-console.log(`[Total] @discordts/builders         : ${oursTot.toFixed(2)} ms`);
+console.log(`[Total] @buncord/builders         : ${oursTot.toFixed(2)} ms`);
 console.log(`Ratio Total                         : ${totSpeed.toFixed(1)}x faster!\n`);
 
 const isCI = process.env.CI === 'true' || !!process.env.GITHUB_ACTIONS;
@@ -194,7 +194,7 @@ const delay = 0.9;
 const svgTemplate = `<svg width="800" height="460" viewBox="0 0 800 460" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
   <defs>
     <clipPath id="avatarClip">
-      <circle cx="2562" cy="364" r="335" id="svg_1"/>
+      <circle cx="3061.172" cy="364" r="335" id="svg_1"/>
     </clipPath>
     <filter id="svg_14_blur" x="-50%" y="-50%" width="200%" height="200%">
       <feGaussianBlur in="SourceGraphic" stdDeviation="2.1"/>
@@ -274,7 +274,7 @@ const svgTemplate = `<svg width="800" height="460" viewBox="0 0 800 460" fill="n
     <rect x="0" y="32" width="12" height="12" rx="3" fill="url(#grad-djs)"/>
     <text x="18" y="42" class="font-base legend-djs">@discordjs/builders</text>
     <rect x="155" y="32" width="12" height="12" rx="3" fill="url(#grad-ours)"/>
-    <text x="173" y="42" class="font-base legend-ours">@discordts/builders (ours)</text>
+    <text x="173" y="42" class="font-base legend-ours">@buncord/builders (ours)</text>
   </g>
 
   <text x="${cInst}" y="385" class="font-base group-title fade-in" style="animation-delay:${1.05 + delay}s">Instantiation</text>
@@ -363,13 +363,13 @@ This package is optimized for speed. It runs close to 0ms overhead by using dire
 ![Benchmark Graph](./assets/benchmark.svg)
 
 > [!TIP]
-> **Performance Boost:** With over **${totSpeed.toFixed(1)}x performance** (more than ${percentage}% faster processing), \`@discordts/builders\` eliminates instantiation and serialization bottlenecks entirely, running close to 0ms overhead.
+> **Performance Boost:** With over **${totSpeed.toFixed(1)}x performance** (more than ${percentage}% faster processing), \`@buncord/builders\` eliminates instantiation and serialization bottlenecks entirely, running close to 0ms overhead.
 
 Below are the detailed results comparing **50,000 iterations** of component construction and serialization against \`@discordjs/builders\`.
 
 *Last Benchmarked: ${formattedDate}*
 
-| Task | \`@discordjs/builders\` | \`@discordts/builders\` | Speed Comparison |
+| Task | \`@discordjs/builders\` | \`@buncord/builders\` | Speed Comparison |
 | :--- | :--- | :--- | :---: |
 | **Instantiation** | ~${djsInst.toFixed(1)} ms | **~${oursInst.toFixed(1)} ms** | **${instSpeed.toFixed(1)}x faster** |
 | **Serialization** | ~${djsSer.toFixed(1)} ms | **~${oursSer.toFixed(1)} ms** | **${serSpeed.toFixed(1)}x faster** |

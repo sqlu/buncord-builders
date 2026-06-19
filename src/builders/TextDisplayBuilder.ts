@@ -19,7 +19,7 @@ export interface TextDisplayBuilderInstance extends TextDisplayBuilderClass {}
  *
  * @example
  * ```ts
- * const text = new TextDisplayBuilder({ content: '## discordts-builders' });
+ * const text = new TextDisplayBuilder({ content: '## buncord-builders' });
  * ```
  *
  * @see {@link https://discord.com/developers/docs/components/reference#text-display Discord Docs - Text Display}

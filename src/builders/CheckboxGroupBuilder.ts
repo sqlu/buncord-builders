@@ -259,7 +259,7 @@ export interface CheckboxGroupBuilderInstance<
  * const checkboxGroup = new CheckboxGroupBuilder({
  *   customId: 'interests',
  *   options: [
- *     new CheckboxGroupOptionBuilder({ value: 'coding', label: 'discordts-builders' }),
+ *     new CheckboxGroupOptionBuilder({ value: 'coding', label: '@buncord/builders' }),
  *     new CheckboxGroupOptionBuilder({ value: 'coding', label: 'ISAE Supaero' }),
  *   ],
  *   minValues: 1,

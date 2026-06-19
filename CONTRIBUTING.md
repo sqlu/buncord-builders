@@ -1,4 +1,4 @@
-# Contributing to @discordts/builders
+# Contributing to @buncord/builders
 
 So you want to contribute? Great! Here is how to get your environment ready.
 

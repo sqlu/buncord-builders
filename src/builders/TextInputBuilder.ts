@@ -84,9 +84,9 @@ export interface TextInputBuilderInstance<CustomId extends string>
  * @example
  * ```ts
  * const input = new TextInputBuilder({
- *   customId: 'feedback_',
+ *   customId: 'feedback',
  *   style: TextInputStyle.Paragraph,
- *   placeholder: 'Provide feedback for Snayz on discordts-builders',
+ *   placeholder: 'Provide feedback for Snayz on buncord-builders',
  *   minLength: 10,
  *   maxLength: 1000,
  *   required: true,

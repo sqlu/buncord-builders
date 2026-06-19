@@ -513,7 +513,7 @@ export interface StringSelectMenuBuilderInstance<
  *   customId: 'snayz_projects_dropdown',
  *   placeholder: 'Select a Snayz project on Discord...',
  *   options: [
- *     new StringSelectMenuOptionBuilder({ label: 'discordts-builders', value: 'builders' }),
+ *     new StringSelectMenuOptionBuilder({ label: 'buncord-builders', value: 'builders' }),
  *     new StringSelectMenuOptionBuilder({ label: 'Others Project', value: 'other' }),
  *   ],
  * });
@@ -1023,7 +1023,7 @@ export interface RoleSelectMenuBuilderInstance<CustomId extends string>
  * ```ts
  * const menu = new RoleSelectMenuBuilder({
  *   customId: 'role_picker_snayz',
- *   placeholder: 'Select a project role in discordts-builders...',
+ *   placeholder: 'Select a project role in buncord-builders...',
  * });
  * ```
  */

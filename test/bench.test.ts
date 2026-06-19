@@ -38,7 +38,7 @@ describe('Performance Benchmarks', () => {
     const endDjsSer = performance.now();
     const timeDjsSer = endDjsSer - startDjsSer;
 
-    // 3. @discordts/builders - Instanciation seule
+    // 3. @buncord/builders - Instanciation seule
     const startOursInst = performance.now();
     const ourRows: ActionRowBuilder[] = [];
     for (let i = 0; i < ITERATIONS; i++) {
@@ -66,7 +66,7 @@ describe('Performance Benchmarks', () => {
     const endOursInst = performance.now();
     const timeOursInst = endOursInst - startOursInst;
 
-    // 4. @discordts/builders - Sérialisation seule
+    // 4. @buncord/builders - Sérialisation seule
     const startOursSer = performance.now();
     for (let i = 0; i < ITERATIONS; i++) {
       ourRows[i]!.toJSON();
@@ -76,13 +76,13 @@ describe('Performance Benchmarks', () => {
 
     console.log(`\n--- BENCHMARK RESULTS (${ITERATIONS} iterations) ---`);
     console.log(`[Instantiation] @discordjs/builders : ${timeDjsInst.toFixed(2)} ms`);
-    console.log(`[Instantiation] @discordts/builders : ${timeOursInst.toFixed(2)} ms`);
+    console.log(`[Instantiation] @buncord/builders : ${timeOursInst.toFixed(2)} ms`);
     console.log(`Ratio Instantiation                 : ${(timeDjsInst / timeOursInst).toFixed(1)}x faster!`);
     console.log(`\n[Serialization] @discordjs/builders : ${timeDjsSer.toFixed(2)} ms`);
-    console.log(`[Serialization] @discordts/builders : ${timeOursSer.toFixed(2)} ms`);
+    console.log(`[Serialization] @buncord/builders : ${timeOursSer.toFixed(2)} ms`);
     console.log(`Ratio Serialization                 : ${(timeDjsSer / timeOursSer).toFixed(1)}x faster!`);
     console.log(`\n[Total] @discordjs/builders         : ${(timeDjsInst + timeDjsSer).toFixed(2)} ms`);
-    console.log(`[Total] @discordts/builders         : ${(timeOursInst + timeOursSer).toFixed(2)} ms`);
+    console.log(`[Total] @buncord/builders         : ${(timeOursInst + timeOursSer).toFixed(2)} ms`);
     console.log(`Ratio Total                         : ${((timeDjsInst + timeDjsSer) / (timeOursInst + timeOursSer)).toFixed(1)}x faster!\n`);
 
     // Verify correctness: both builders must serialize to the same JSON structure

@@ -14,7 +14,7 @@ const url = "webhook"
 const container = new ContainerBuilder()
   .addComponents(
     new TextDisplayBuilder({
-      content: '# Hello from @discordts/builders!',
+      content: '# Hello from @buncord/builders!',
     }),
     new SeparatorBuilder({
       divider: true,
@@ -24,7 +24,7 @@ const container = new ContainerBuilder()
       components: [
         new ButtonBuilder({
           style: ButtonStyle.Link,
-          url: 'https://github.com/sqlu/discordts-builders',
+          url: 'https://github.com/sqlu/buncord-builders',
           label: "Star Snayz's repository on GitHub",
           emoji: { name: "⭐" },
         }),
