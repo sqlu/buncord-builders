@@ -1,40 +1,48 @@
 <div align="center">
-  <img src="./assets/logo.svg" alt="@discordts/builders logo" width="260" />
+  <img src="./assets/logo.svg" alt="@discordts/builders logo" width="320" />
 
   <h3>Type-safe Discord Components builders for Bun</h3>
 
-  [![npm](https://img.shields.io/npm/v/@discordts/builders?color=FF3B92&style=flat-square)](https://npmjs.com/package/@discordts/builders)
-  [![Bun](https://img.shields.io/badge/bun-%3E%3D1.1.0-orange?style=flat-square&logo=bun)](https://bun.sh)
-  [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org)
-  [![License: MIT](https://img.shields.io/badge/License-MIT-22c55e?style=flat-square)](LICENSE)
+  <p>
+    <a href="https://npmjs.com/package/@discordts/builders"><img src="https://img.shields.io/npm/v/@discordts/builders?color=FF3B92&style=flat-square" alt="npm" /></a>
+    <a href="https://bun.sh"><img src="https://img.shields.io/badge/bun-%3E%3D1.1.0-orange?style=flat-square&logo=bun" alt="Bun" /></a>
+    <a href="https://www.typescriptlang.org"><img src="https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript" alt="TypeScript" /></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-22c55e?style=flat-square" alt="License: MIT" /></a>
+  </p>
+
+  <p>
+    <img src="./assets/badge-speed.svg" alt="Performance Badge" />
+    <img src="./assets/badge-safety.svg" alt="Type Safety Badge" />
+    <img src="./assets/badge-deps.svg" alt="Zero Dependencies Badge" />
+  </p>
 </div>
 
 ---
 
-`@discordts/builders` gives Bun developers a clean, zero-dependency way to build Discord Components payloads. No hand-written JSON, no runtime schema libraries.
+## Why is your bot wasting CPU cycles on heavy validation?
 
-> [!NOTE]
-> The logo design is inspired by discord.js.
+Traditional Discord component builders process and transpile complex validation logic *at runtime* on every single serialization. This creates noticeable bottlenecks in high-scale bots.
 
-## Why this package
+`@discordts/builders` solves this by shifting safety checks to the **type level (compile-time)**. You get a frictionless, zero-dependency, ultra-lightweight library designed natively for Bun that serializes components **and is way faster**.
 
-| Feature | Detail |
-|:--------|:-------|
-| **Bun-first** | Import TypeScript source directly and no build step required |
-| **Components V2** | Full coverage of layout, content, and modal types |
-| **Runtime validation** | Catches Discord API limit violations before payloads are sent |
-| **Type-level safety** | String lengths and structures checked via TypeScript template types |
-| **Deserialization** | Rebuild any builder from an existing raw Discord payload |
+---
 
-## Installation
+## Key Benefits for Developers
 
+- **Zero Dependency Footprint:** Standard lockfiles shouldn't require dozens of transitives just to build a payload. We ship with **zero dependencies**.
+- **Compile-Time Safety:** Invalid component structures, overflow lengths, and mismatched options fail *while you type*, not in production.
+- **Drop-in Migration:** Easily swap `@discordjs/builders` imports out and enjoy near-zero overhead without rewriting your logic.
+- **Next-Gen Component Support:** Only support for Discord's latest component.
+
+---
+
+## Get Started in 30 Seconds
+
+### Install
 ```bash
 bun add @discordts/builders
 ```
-
-**Requirements:** Bun ≥ 1.1.0 · TypeScript 5.x
-
-TypeScript source files are published directly no pre-transpiled output.
+*Requirements: Bun ≥ 1.1.0 and TypeScript 5.x*
 
 ## Benchmarks
 
@@ -43,7 +51,7 @@ This package is optimized for speed. It runs close to 0ms overhead by using dire
 ![Benchmark Graph](./assets/benchmark.svg)
 
 > [!TIP]
-> **Performance Boost:** With over **6.8x performance** (more than 576% faster processing), `@discordts/builders` eliminates instantiation and serialization bottlenecks entirely, running close to 0ms overhead.
+> **Performance Boost:** With over **7.6x performance** (more than 664% faster processing), `@discordts/builders` eliminates instantiation and serialization bottlenecks entirely, running close to 0ms overhead.
 
 Below are the detailed results comparing **50,000 iterations** of component construction and serialization against `@discordjs/builders`.
 
@@ -51,14 +59,9 @@ Below are the detailed results comparing **50,000 iterations** of component cons
 
 | Task | `@discordjs/builders` | `@discordts/builders` | Speed Comparison |
 | :--- | :--- | :--- | :---: |
-| **Instantiation** | ~171.7 ms | **~16.2 ms** | **10.6x faster** |
-| **Serialization** | ~40.0 ms | **~15.2 ms** | **2.6x faster** |
-| **Total** | ~211.8 ms | **~31.3 ms** | **6.8x faster** |
-| **Instantiation** | ~164.3 ms | **~16.5 ms** | **10.0x faster** |
-| **Serialization** | ~47.4 ms | **~14.9 ms** | **3.2x faster** |
-| **Total** | ~211.6 ms | **~31.3 ms** | **6.8x faster** |
-
-> The SVG and README table are only regenerated automatically by CI on push. Running locally outputs results to the console only.
+| **Instantiation** | ~138.6 ms | **~13.8 ms** | **10.1x faster** |
+| **Serialization** | ~38.5 ms | **~9.4 ms** | **4.1x faster** |
+| **Total** | ~177.1 ms | **~23.2 ms** | **7.6x faster** |
 
 ## Component Architecture
 
@@ -125,11 +128,7 @@ When this flag is set, Discord treats components as the message body. Use `TextD
 | CheckboxGroup | 22 | Modals |
 | Checkbox | 23 | Modals |
 
-## Quick Start
-
-See [`exemples/quick-start.ts`](./exemples/quick-start.ts) for a full runnable example.
-
-## Examples
+## Examples & Demos
 
 All runnable examples live in [`/exemples`](./exemples):
 
@@ -140,14 +139,6 @@ All runnable examples live in [`/exemples`](./exemples):
 | [`modals.ts`](./exemples/modals.ts) | Modal with text inputs, radio groups, checkboxes, and file upload |
 | [`validation.ts`](./exemples/validation.ts) | Runtime validation and `auditTree()` diagnostics |
 | [`webhook.ts`](./exemples/webhook.ts) | Sending a payload to a Discord webhook |
-
-## Smart Layout
-
-`SmartLayoutBuilder` automatically packs buttons (up to 5 per row) and gives select menus their own dedicated rows. See [`exemples/smart-layout.ts`](./exemples/smart-layout.ts).
-
-## Modals
-
-Modals support `LabelBuilder`, `TextInputBuilder`, `RadioGroupBuilder`, `CheckboxGroupBuilder`, `FileUploadBuilder`, and all five select menu types. See [`exemples/modals.ts`](./exemples/modals.ts).
 
 ## Validation & Auditing
 

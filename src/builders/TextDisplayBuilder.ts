@@ -5,7 +5,7 @@ import { BaseComponent, resolveRaw } from './base.ts';
 
 export interface TextDisplayOptions<Content extends string = string> {
   /** The markdown content to display (1–4000 characters). */
-  content: Content & CheckMinLength<Content, 1, 'content'>;
+  content: Content & CheckMinLength<Content, 1, 'content'> & CheckMaxLength<Content, 4000, 'content'>;
 }
 
 export interface TextDisplayBuilderInstance extends TextDisplayBuilderClass {}
@@ -65,7 +65,7 @@ constructor(opts: TextDisplayOptions<string>) {
    * @returns This builder for chaining.
    * @throws If content is empty or longer than 4000 characters.
    */
-  setContent(content: string): this {
+  setContent(content: CheckMinLength<string, 1, 'content'> & CheckMaxLength<string, 4000, 'content'>): this {
     if (content.length < 1 || content.length > 4000)
       throw new Error(`content must be between 1 and 4000 characters, but you gave me ${content.length}`);
     this.data.content = content;
@@ -77,12 +77,10 @@ constructor(opts: TextDisplayOptions<string>) {
    * @returns The JSON representation.
    */
   override toJSON(): APITextDisplayComponent {
-    const res: APITextDisplayComponent = {
-      type: ComponentType.TextDisplay,
-      content: this.data.content ?? '',
-    };
-    if (this.id !== undefined) res.id = this.id;
-    return res;
+    if (this.id !== undefined) {
+      (this.data as Record<string, unknown>).id = this.id;
+    }
+    return this.data as APITextDisplayComponent;
   }
 }
 

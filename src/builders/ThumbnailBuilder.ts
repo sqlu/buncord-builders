@@ -1,5 +1,6 @@
 import { ComponentType } from '../enums.ts';
 import type { APIThumbnailComponent } from '../types.ts';
+import type { CheckMediaUrl, CheckMaxLength } from '../utils/guards.ts';
 import { BaseComponent, resolveRaw } from './base.ts';
 
 export interface ThumbnailOptions {
@@ -10,6 +11,17 @@ export interface ThumbnailOptions {
   /** Whether to blur the thumbnail behind a spoiler overlay. */
   spoiler?: boolean;
 }
+
+export type ValidateThumbnailOptions<Url extends string, Description extends string = string> =
+  CheckMediaUrl<Url> extends { readonly error: string }
+  ? CheckMediaUrl<Url>
+  : CheckMaxLength<Url, 512, 'url'> extends { readonly error: string }
+  ? CheckMaxLength<Url, 512, 'url'>
+  : [Description] extends [never]
+  ? unknown
+  : CheckMaxLength<Description, 1024, 'description'> extends { readonly error: string }
+  ? CheckMaxLength<Description, 1024, 'description'>
+  : unknown;
 
 export interface ThumbnailBuilderInstance extends ThumbnailBuilderClass { }
 
@@ -92,7 +104,7 @@ class ThumbnailBuilderClass extends BaseComponent<Partial<APIThumbnailComponent>
    * @returns This builder for chaining.
    * @throws If URL uses an unsupported scheme.
    */
-  setURL(url: string): this {
+  setURL(url: CheckMediaUrl<string> & CheckMaxLength<string, 512, 'url'>): this {
     if (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('attachment://'))
       throw new Error(`url must be http/https or attachment:// (got "${url}")`);
     this.data.media = { url };
@@ -106,7 +118,7 @@ class ThumbnailBuilderClass extends BaseComponent<Partial<APIThumbnailComponent>
    * @returns This builder for chaining.
    * @throws If description exceeds 1024 characters.
    */
-  setDescription(desc: string): this {
+  setDescription(desc: CheckMaxLength<string, 1024, 'description'>): this {
     this.validateLength(desc, 1024, 'description');
     this.data.description = desc;
     return this;
@@ -139,20 +151,24 @@ class ThumbnailBuilderClass extends BaseComponent<Partial<APIThumbnailComponent>
    * @throws If no URL has been set.
    */
   override toJSON(): APIThumbnailComponent {
-    if (!this.url) throw new Error('need a media url to serialize toJSON');
-    const res: APIThumbnailComponent = {
-      type: ComponentType.Thumbnail,
-      media: { url: this.url },
-    };
-    if (this.id !== undefined) res.id = this.id;
-    if (this.data.description !== undefined) res.description = this.data.description;
-    if (this.data.spoiler !== undefined) res.spoiler = this.data.spoiler;
-    return res;
+    if (!this.data.media?.url) throw new Error('need a media url to serialize toJSON');
+    if (this.id !== undefined) {
+      (this.data as Record<string, unknown>).id = this.id;
+    }
+    return this.data as APIThumbnailComponent;
   }
 }
 
 export const ThumbnailBuilder = ThumbnailBuilderClass as unknown as {
-  new(opts: ThumbnailOptions): ThumbnailBuilderInstance;
+  new <
+    Url extends string,
+    Description extends string = string,
+  >(
+    opts: ThumbnailOptions & {
+      url: Url;
+      description?: Description;
+    } & ValidateThumbnailOptions<Url, Description>,
+  ): ThumbnailBuilderInstance;
   from(data: APIThumbnailComponent): ThumbnailBuilder;
 };
 

@@ -165,7 +165,7 @@ constructor(opts: LabelOptions<string, LabelComponentBuilder, string>) {
    * @returns This builder for chaining.
    * @throws If label exceeds 45 characters.
    */
-  setLabel(lbl: string): this {
+  setLabel(lbl: CheckMaxLength<string, 45, 'label'>): this {
     this.validateLength(lbl, 45, 'label');
     this.data.label = lbl;
     return this;
@@ -178,7 +178,7 @@ constructor(opts: LabelOptions<string, LabelComponentBuilder, string>) {
    * @returns This builder for chaining.
    * @throws If description exceeds 100 characters.
    */
-  setDescription(desc: string): this {
+  setDescription(desc: CheckMaxLength<string, 100, 'description'>): this {
     this.validateLength(desc, 100, 'description');
     this.data.description = desc;
     return this;
@@ -298,14 +298,13 @@ constructor(opts: LabelOptions<string, LabelComponentBuilder, string>) {
     const component = comp?.toJSON ? comp.toJSON() : comp;
     if (component && typeof component === 'object')
       this.validateModalComponent(component as Record<string, unknown>);
-    const res: APILabelComponent = {
-      type: ComponentType.Label,
-      label: this.data.label ?? '',
+    if (this.id !== undefined) {
+      (this.data as Record<string, unknown>).id = this.id;
+    }
+    return {
+      ...this.data,
       component: component as APILabelComponentChild,
-    };
-    if (this.id !== undefined) res.id = this.id;
-    if (this.data.description !== undefined) res.description = this.data.description;
-    return res;
+    } as APILabelComponent;
   }
 }
 

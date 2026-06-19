@@ -14,6 +14,11 @@ import type {
   CheckMaxLength,
   CheckMinLength,
   AllowedSelectMenuRange,
+  IsLessThanOrEqual,
+  GetCustomIdField,
+  CheckStringConstraints,
+  ExtractCustomId,
+  ValidateSelectMenuRequired,
 } from '../utils/guards.ts';
 import { BaseComponent, resolveRaw } from './base.ts';
 
@@ -153,7 +158,7 @@ abstract class BaseSelectMenuBuilderClass<
    * @param cid - The unique custom identifier.
    * @returns This builder instance for chaining.
    */
-  setCustomId(cid: string): this {
+  setCustomId(cid: CheckMinLength<string, 1, 'customId'> & CheckMaxLength<string, 100, 'customId'>): this {
     this.validateCustomId(cid);
     (this.data as Record<string, unknown>).custom_id = cid;
     return this;
@@ -165,7 +170,7 @@ abstract class BaseSelectMenuBuilderClass<
    * @returns This builder instance
    * @throws If placeholder exceeds 150 characters
    */
-  setPlaceholder(placeholder: string): this {
+  setPlaceholder(placeholder: CheckMaxLength<string, 150, 'placeholder'>): this {
     this.validateLength(placeholder, 150, 'placeholder');
     (this.data as Record<string, unknown>).placeholder = placeholder;
     return this;
@@ -326,7 +331,7 @@ constructor(opts?: TypeSafeSelectMenuOption<string, string, string>) {
    * @returns This builder instance
    * @throws If label exceeds 100 characters
    */
-  setLabel(lbl: string): this {
+  setLabel(lbl: CheckMaxLength<string, 100, 'label'>): this {
     if (lbl.length > 100) {
       throw new Error(`label is too long, max is 100 characters but got ${lbl.length}`);
     }
@@ -340,7 +345,7 @@ constructor(opts?: TypeSafeSelectMenuOption<string, string, string>) {
    * @returns This builder instance
    * @throws If value is empty or exceeds 100 characters
    */
-  setValue(val: string): this {
+  setValue(val: CheckMinLength<string, 1, 'value'> & CheckMaxLength<string, 100, 'value'>): this {
     if (val.length < 1) {
       throw new Error('value needs to be at least 1 character');
     }
@@ -357,7 +362,7 @@ constructor(opts?: TypeSafeSelectMenuOption<string, string, string>) {
    * @returns This builder instance
    * @throws If description exceeds 100 characters
    */
-  setDescription(desc: string): this {
+  setDescription(desc: CheckMaxLength<string, 100, 'description'>): this {
     if (desc.length > 100) {
       throw new Error(`description is too long, max is 100 characters but got ${desc.length}`);
     }
@@ -393,14 +398,7 @@ constructor(opts?: TypeSafeSelectMenuOption<string, string, string>) {
   toJSON(): APISelectMenuOption {
     if (!this.data.label) throw new Error('label is required');
     if (!this.data.value) throw new Error('value is required');
-    const res: APISelectMenuOption = {
-      label: this.data.label,
-      value: this.data.value,
-    };
-    if (this.data.description !== undefined) res.description = this.data.description;
-    if (this.data.emoji !== undefined) res.emoji = this.data.emoji;
-    if (this.data.default !== undefined) res.default = this.data.default;
-    return res;
+    return this.data as APISelectMenuOption;
   }
 }
 
@@ -421,35 +419,74 @@ export const StringSelectMenuOptionBuilder =
 export type StringSelectMenuOptionBuilder =
   StringSelectMenuOptionBuilderClass;
 
-export interface BaseStringSelectMenuOptions<
-  Placeholder extends string = string,
-  Options extends readonly (
-    | TypeSafeSelectMenuOption
-    | StringSelectMenuOptionBuilder
-  )[] = (TypeSafeSelectMenuOption | StringSelectMenuOptionBuilder)[],
-> {
-  options: Options & CheckArrayLength<Options, 1, 25, 'options'>;
-  placeholder?: Placeholder & CheckMinLength<Placeholder, 1, 'Placeholder'> & CheckMaxLength<Placeholder, 150, 'Placeholder'>;
-  minValues?: AllowedSelectMenuRange;
-  min_values?: AllowedSelectMenuRange;
-  maxValues?: AllowedSelectMenuRange;
-  max_values?: AllowedSelectMenuRange;
-  required?: boolean;
-  disabled?: boolean;
-}
-
-export type StringSelectMenuOptions<
+export interface StringSelectMenuOptions<
   CustomId extends string = string,
   Placeholder extends string = string,
   Options extends readonly (
     | TypeSafeSelectMenuOption
     | StringSelectMenuOptionBuilder
-  )[] = (TypeSafeSelectMenuOption | StringSelectMenuOptionBuilder)[],
-> = BaseStringSelectMenuOptions<Placeholder, Options> &
-  (
-    | { customId: CustomId; custom_id?: never }
-    | { custom_id: CustomId; customId?: never }
-  );
+  )[] = readonly (TypeSafeSelectMenuOption | StringSelectMenuOptionBuilder)[],
+  MinValues extends AllowedSelectMenuRange = AllowedSelectMenuRange,
+  MaxValues extends AllowedSelectMenuRange = AllowedSelectMenuRange,
+> {
+  options: readonly [...Options];
+  placeholder?: Placeholder;
+  minValues?: MinValues;
+  min_values?: MinValues;
+  maxValues?: MaxValues;
+  max_values?: MaxValues;
+  required?: boolean;
+  disabled?: boolean;
+  customId?: CustomId;
+  custom_id?: CustomId;
+}
+
+type GetStringSelectOptions<Opts> = Opts extends { options: infer O } ? (O extends readonly unknown[] ? O : never) : never;
+
+type GetSelectMinValues<Opts> =
+  Opts extends { minValues: infer M }
+  ? M
+  : Opts extends { min_values: infer M }
+  ? M
+  : never;
+
+type GetSelectMaxValues<Opts> =
+  Opts extends { maxValues: infer M }
+  ? M
+  : Opts extends { max_values: infer M }
+  ? M
+  : never;
+
+type ValidateSelectValues<Opts> =
+  [GetSelectMinValues<Opts>] extends [never]
+  ? unknown
+  : [GetSelectMaxValues<Opts>] extends [never]
+  ? unknown
+  : IsLessThanOrEqual<GetSelectMinValues<Opts> & number, GetSelectMaxValues<Opts> & number> extends true
+  ? unknown
+  : { readonly error: 'minValues cannot be greater than maxValues' };
+
+export type ValidateSelectMenuOptions<Opts, Name extends string = 'SelectMenu'> =
+  CheckStringConstraints<GetCustomIdField<Opts>, 1, 100, 'customId'> extends { readonly error: string }
+  ? CheckStringConstraints<GetCustomIdField<Opts>, 1, 100, 'customId'>
+  : Opts extends { customId: string; custom_id: string }
+  ? { readonly error: 'Cannot specify both customId and custom_id' }
+  : Opts extends { customId: string } | { custom_id: string }
+  ? (Opts extends { placeholder: string }
+      ? CheckStringConstraints<Opts['placeholder'], 1, 150, 'placeholder'> extends { readonly error: string }
+        ? CheckStringConstraints<Opts['placeholder'], 1, 150, 'placeholder'>
+        : ValidateSelectValues<Opts>
+      : ValidateSelectValues<Opts>)
+  : { readonly error: `${Name} requires a customId or custom_id property` };
+
+export type ValidateStringSelectMenuOptions<Opts> =
+  ValidateSelectMenuOptions<Opts, 'StringSelectMenu'> extends { readonly error: string }
+  ? ValidateSelectMenuOptions<Opts, 'StringSelectMenu'>
+  : [GetStringSelectOptions<Opts>] extends [never]
+  ? { readonly error: 'StringSelectMenu requires an options property' }
+  : CheckArrayLength<GetStringSelectOptions<Opts>, 1, 25, 'options'> extends { readonly error: string }
+  ? CheckArrayLength<GetStringSelectOptions<Opts>, 1, 25, 'options'>
+  : unknown;
 
 export interface StringSelectMenuBuilderInstance<
   CustomId extends string,
@@ -629,26 +666,24 @@ class StringSelectMenuBuilderClass extends BaseSelectMenuBuilderClass<Partial<AP
   }
 
   override toJSON(): APIStringSelectComponent {
-    // manual loop, faster than .map for options
     const rawOpts = this.data.options as unknown as readonly (TypeSafeSelectMenuOption | StringSelectMenuOptionBuilder)[];
-    const len = rawOpts.length;
+    const len = rawOpts ? rawOpts.length : 0;
     const serializedOpts = new Array<APISelectMenuOption>(len);
     for (let i = 0; i < len; i++) {
-      const o = rawOpts[i] as unknown as { toJSON?: () => APISelectMenuOption };
-      serializedOpts[i] = o.toJSON ? o.toJSON() : o as unknown as APISelectMenuOption;
+      const o = rawOpts[i];
+      if (o) {
+        serializedOpts[i] = 'toJSON' in o && typeof o.toJSON === 'function'
+          ? (o as { toJSON(): APISelectMenuOption }).toJSON()
+          : (o as APISelectMenuOption);
+      }
     }
-    const res: APIStringSelectComponent = {
-      type: ComponentType.StringSelect,
-      custom_id: this.data.custom_id ?? '',
+    if (this.id !== undefined) {
+      (this.data as Record<string, unknown>).id = this.id;
+    }
+    return {
+      ...this.data,
       options: serializedOpts,
-    };
-    if (this.id !== undefined) res.id = this.id;
-    if (this.data.placeholder !== undefined) res.placeholder = this.data.placeholder;
-    if (this.data.min_values !== undefined) res.min_values = this.data.min_values;
-    if (this.data.max_values !== undefined) res.max_values = this.data.max_values;
-    if (this.data.disabled !== undefined) res.disabled = this.data.disabled;
-    if (this.data.required !== undefined) res.required = this.data.required;
-    return res;
+    } as APIStringSelectComponent;
   }
 }
 
@@ -657,15 +692,16 @@ export const StringSelectMenuBuilder =
     new <
       CustomId extends string = string,
       Placeholder extends string = string,
-      OptionType extends
+      Options extends readonly (
         | TypeSafeSelectMenuOption
-        | StringSelectMenuOptionBuilder =
-        | TypeSafeSelectMenuOption
-        | StringSelectMenuOptionBuilder,
-      Options extends readonly OptionType[] = readonly OptionType[],
+        | StringSelectMenuOptionBuilder
+      )[] = readonly (TypeSafeSelectMenuOption | StringSelectMenuOptionBuilder)[],
+      MinValues extends AllowedSelectMenuRange = AllowedSelectMenuRange,
+      MaxValues extends AllowedSelectMenuRange = AllowedSelectMenuRange,
+      Opts extends StringSelectMenuOptions<CustomId, Placeholder, Options, MinValues, MaxValues> = StringSelectMenuOptions<CustomId, Placeholder, Options, MinValues, MaxValues>,
     >(
-      opts: StringSelectMenuOptions<CustomId, Placeholder, Options>,
-    ): StringSelectMenuBuilderInstance<CustomId, Options>;
+      opts: Opts & ValidateStringSelectMenuOptions<Opts> & ValidateSelectMenuRequired<Opts>,
+    ): StringSelectMenuBuilderInstance<ExtractCustomId<Opts>, GetStringSelectOptions<Opts>>;
     from(data: APIStringSelectComponent): StringSelectMenuBuilder;
   };
 export type StringSelectMenuBuilder = StringSelectMenuBuilderClass;
@@ -673,7 +709,7 @@ export type StringSelectMenuBuilder = StringSelectMenuBuilderClass;
 export interface BaseAutoSelectMenuOptions<
   Placeholder extends string = string,
 > {
-  placeholder?: Placeholder & CheckMinLength<Placeholder, 1, 'Placeholder'> & CheckMaxLength<Placeholder, 150, 'Placeholder'>;
+  placeholder?: Placeholder;
   minValues?: AllowedSelectMenuRange;
   min_values?: AllowedSelectMenuRange;
   maxValues?: AllowedSelectMenuRange;
@@ -750,7 +786,7 @@ override setMaxValues(max: number): this {
   }
 
   protected addDefaultValuesRaw(
-    entries: APISelectMenuDefaultValue[],
+    entries: readonly APISelectMenuDefaultValue[],
   ): void {
     const d = this.data as Record<string, unknown>;
     if (!d.default_values) d.default_values = [];
@@ -770,40 +806,41 @@ override setMaxValues(max: number): this {
   }
 
   protected buildJSON(type: number): Record<string, unknown> {
-    const res: Record<string, unknown> = {
-      type,
-    };
-    if (this.id !== undefined) res.id = this.id;
-    if (this.data.custom_id !== undefined) res.custom_id = this.data.custom_id;
-    if (this.data.placeholder !== undefined) res.placeholder = this.data.placeholder;
-    if (this.data.min_values !== undefined) res.min_values = this.data.min_values;
-    if (this.data.max_values !== undefined) res.max_values = this.data.max_values;
-    if (this.data.disabled !== undefined) res.disabled = this.data.disabled;
-    if (this.data.required !== undefined) res.required = this.data.required;
-
-    // avoid sending default_values if empty, Discord dislikes empty arrays
+    if (this.id !== undefined) {
+      (this.data as Record<string, unknown>).id = this.id;
+    }
     const defs = (this.data as Record<string, unknown>).default_values;
-    if (Array.isArray(defs) && defs.length > 0) {
-      res.default_values = defs as APISelectMenuDefaultValue[];
-    }
-
+    const hasDefs = Array.isArray(defs) && defs.length > 0;
     const chanTypes = (this.data as Record<string, unknown>).channel_types;
-    if (Array.isArray(chanTypes) && chanTypes.length > 0) {
-      res.channel_types = chanTypes as ChannelType[];
-    }
+    const hasChan = Array.isArray(chanTypes) && chanTypes.length > 0;
 
+    const res = {
+      ...this.data,
+      type,
+    } as Record<string, unknown>;
+
+    if (!hasDefs) delete res.default_values;
+    if (!hasChan) delete res.channel_types;
     return res;
   }
 }
 
-export type UserSelectMenuOptions<
+export interface UserSelectMenuOptions<
   CustomId extends string = string,
   Placeholder extends string = string,
-> = BaseAutoSelectMenuOptions<Placeholder> &
-  (
-    | { customId: CustomId; custom_id?: never }
-    | { custom_id: CustomId; customId?: never }
-  );
+  MinValues extends AllowedSelectMenuRange = AllowedSelectMenuRange,
+  MaxValues extends AllowedSelectMenuRange = AllowedSelectMenuRange,
+> {
+  placeholder?: Placeholder;
+  minValues?: MinValues;
+  min_values?: MinValues;
+  maxValues?: MaxValues;
+  max_values?: MaxValues;
+  required?: boolean;
+  disabled?: boolean;
+  customId?: CustomId;
+  custom_id?: CustomId;
+}
 
 export interface UserSelectMenuBuilderInstance<CustomId extends string>
   extends UserSelectMenuBuilderClass {
@@ -893,7 +930,7 @@ class UserSelectMenuBuilderClass extends BaseAutoSelectMenuBuilderClass<Partial<
     super(payload);
   }
 
-  setDefaultUsers(users: (string | { id: string; type?: SelectMenuDefaultValueType | (string & {}) })[]): this {
+  setDefaultUsers(users: readonly (string | { id: string; type?: SelectMenuDefaultValueType | (string & {}) })[]): this {
     const len = users.length;
     const vals = new Array<APISelectMenuDefaultValue>(len);
     for (let i = 0; i < len; i++) {
@@ -919,7 +956,7 @@ class UserSelectMenuBuilderClass extends BaseAutoSelectMenuBuilderClass<Partial<
    * @returns This builder instance
    * @throws If default values count exceeds 25 or violates min/max constraints
    */
-  addDefaultUsers(...users: (string | { id: string; type?: SelectMenuDefaultValueType | (string & {}) })[]): this {
+  addDefaultUsers(...users: readonly (string | { id: string; type?: SelectMenuDefaultValueType | (string & {}) })[]): this {
     const len = users.length;
     const vals = new Array<APISelectMenuDefaultValue>(len);
     for (let i = 0; i < len; i++) {
@@ -946,21 +983,32 @@ export const UserSelectMenuBuilder = UserSelectMenuBuilderClass as unknown as {
   new <
     CustomId extends string = string,
     Placeholder extends string = string,
+    MinValues extends AllowedSelectMenuRange = AllowedSelectMenuRange,
+    MaxValues extends AllowedSelectMenuRange = AllowedSelectMenuRange,
+    Opts extends UserSelectMenuOptions<CustomId, Placeholder, MinValues, MaxValues> = UserSelectMenuOptions<CustomId, Placeholder, MinValues, MaxValues>,
   >(
-    opts: UserSelectMenuOptions<CustomId, Placeholder>,
-  ): UserSelectMenuBuilderInstance<CustomId>;
+    opts: Opts & ValidateSelectMenuOptions<Opts, 'UserSelectMenu'> & ValidateSelectMenuRequired<Opts>,
+  ): UserSelectMenuBuilderInstance<ExtractCustomId<Opts>>;
   from(data: APIUserSelectComponent): UserSelectMenuBuilder;
 };
 export type UserSelectMenuBuilder = UserSelectMenuBuilderClass;
 
-export type RoleSelectMenuOptions<
+export interface RoleSelectMenuOptions<
   CustomId extends string = string,
   Placeholder extends string = string,
-> = BaseAutoSelectMenuOptions<Placeholder> &
-  (
-    | { customId: CustomId; custom_id?: never }
-    | { custom_id: CustomId; customId?: never }
-  );
+  MinValues extends AllowedSelectMenuRange = AllowedSelectMenuRange,
+  MaxValues extends AllowedSelectMenuRange = AllowedSelectMenuRange,
+> {
+  placeholder?: Placeholder;
+  minValues?: MinValues;
+  min_values?: MinValues;
+  maxValues?: MaxValues;
+  max_values?: MaxValues;
+  required?: boolean;
+  disabled?: boolean;
+  customId?: CustomId;
+  custom_id?: CustomId;
+}
 
 export interface RoleSelectMenuBuilderInstance<CustomId extends string>
   extends RoleSelectMenuBuilderClass {
@@ -1050,7 +1098,7 @@ class RoleSelectMenuBuilderClass extends BaseAutoSelectMenuBuilderClass<Partial<
     super(payload);
   }
 
-  setDefaultRoles(roles: (string | { id: string; type?: SelectMenuDefaultValueType | (string & {}) })[]): this {
+  setDefaultRoles(roles: readonly (string | { id: string; type?: SelectMenuDefaultValueType | (string & {}) })[]): this {
     const len = roles.length;
     const vals = new Array<APISelectMenuDefaultValue>(len);
     for (let i = 0; i < len; i++) {
@@ -1075,7 +1123,7 @@ class RoleSelectMenuBuilderClass extends BaseAutoSelectMenuBuilderClass<Partial<
    * @param roles - Role IDs or pre-selected role value objects to add.
    * @returns This builder instance for chaining.
    */
-  addDefaultRoles(...roles: (string | { id: string; type?: SelectMenuDefaultValueType | (string & {}) })[]): this {
+  addDefaultRoles(...roles: readonly (string | { id: string; type?: SelectMenuDefaultValueType | (string & {}) })[]): this {
     const len = roles.length;
     const vals = new Array<APISelectMenuDefaultValue>(len);
     for (let i = 0; i < len; i++) {
@@ -1102,21 +1150,32 @@ export const RoleSelectMenuBuilder = RoleSelectMenuBuilderClass as unknown as {
   new <
     CustomId extends string = string,
     Placeholder extends string = string,
+    MinValues extends AllowedSelectMenuRange = AllowedSelectMenuRange,
+    MaxValues extends AllowedSelectMenuRange = AllowedSelectMenuRange,
+    Opts extends RoleSelectMenuOptions<CustomId, Placeholder, MinValues, MaxValues> = RoleSelectMenuOptions<CustomId, Placeholder, MinValues, MaxValues>,
   >(
-    opts: RoleSelectMenuOptions<CustomId, Placeholder>,
-  ): RoleSelectMenuBuilderInstance<CustomId>;
+    opts: Opts & ValidateSelectMenuOptions<Opts, 'RoleSelectMenu'> & ValidateSelectMenuRequired<Opts>,
+  ): RoleSelectMenuBuilderInstance<ExtractCustomId<Opts>>;
   from(data: APIRoleSelectComponent): RoleSelectMenuBuilder;
 };
 export type RoleSelectMenuBuilder = RoleSelectMenuBuilderClass;
 
-export type MentionableSelectMenuOptions<
+export interface MentionableSelectMenuOptions<
   CustomId extends string = string,
   Placeholder extends string = string,
-> = BaseAutoSelectMenuOptions<Placeholder> &
-  (
-    | { customId: CustomId; custom_id?: never }
-    | { custom_id: CustomId; customId?: never }
-  );
+  MinValues extends AllowedSelectMenuRange = AllowedSelectMenuRange,
+  MaxValues extends AllowedSelectMenuRange = AllowedSelectMenuRange,
+> {
+  placeholder?: Placeholder;
+  minValues?: MinValues;
+  min_values?: MinValues;
+  maxValues?: MaxValues;
+  max_values?: MaxValues;
+  required?: boolean;
+  disabled?: boolean;
+  customId?: CustomId;
+  custom_id?: CustomId;
+}
 
 export interface MentionableSelectMenuBuilderInstance<CustomId extends string>
   extends MentionableSelectMenuBuilderClass {
@@ -1212,7 +1271,7 @@ class MentionableSelectMenuBuilderClass extends BaseAutoSelectMenuBuilderClass<P
    * @returns This builder instance
    * @throws If default values count exceeds 25 or violates min/max constraints
    */
-  setDefaultValues(values: APISelectMenuDefaultValue[]): this {
+  setDefaultValues(values: readonly APISelectMenuDefaultValue[]): this {
     const len = values.length;
     const vals = new Array<APISelectMenuDefaultValue>(len);
     for (let i = 0; i < len; i++) {
@@ -1238,7 +1297,7 @@ class MentionableSelectMenuBuilderClass extends BaseAutoSelectMenuBuilderClass<P
    * @returns This builder instance
    * @throws If default values count would exceed 25
    */
-  addDefaultValues(...values: APISelectMenuDefaultValue[]): this {
+  addDefaultValues(...values: readonly APISelectMenuDefaultValue[]): this {
     this.addDefaultValuesRaw(values);
     return this;
   }
@@ -1248,7 +1307,7 @@ class MentionableSelectMenuBuilderClass extends BaseAutoSelectMenuBuilderClass<P
    * @param users - User IDs or pre-selected user value objects to add.
    * @returns This builder instance for chaining.
    */
-  addDefaultUsers(...users: (string | { id: string })[]): this {
+  addDefaultUsers(...users: readonly (string | { id: string })[]): this {
     const len = users.length;
     const vals = new Array<APISelectMenuDefaultValue>(len);
     for (let i = 0; i < len; i++) {
@@ -1267,7 +1326,7 @@ class MentionableSelectMenuBuilderClass extends BaseAutoSelectMenuBuilderClass<P
    * @param roles - Role IDs or pre-selected role value objects to add.
    * @returns This builder instance for chaining.
    */
-  addDefaultRoles(...roles: (string | { id: string })[]): this {
+  addDefaultRoles(...roles: readonly (string | { id: string })[]): this {
     const len = roles.length;
     const vals = new Array<APISelectMenuDefaultValue>(len);
     for (let i = 0; i < len; i++) {
@@ -1295,28 +1354,34 @@ export const MentionableSelectMenuBuilder =
     new <
       CustomId extends string = string,
       Placeholder extends string = string,
+      MinValues extends AllowedSelectMenuRange = AllowedSelectMenuRange,
+      MaxValues extends AllowedSelectMenuRange = AllowedSelectMenuRange,
+      Opts extends MentionableSelectMenuOptions<CustomId, Placeholder, MinValues, MaxValues> = MentionableSelectMenuOptions<CustomId, Placeholder, MinValues, MaxValues>,
     >(
-      opts: MentionableSelectMenuOptions<CustomId, Placeholder>,
-    ): MentionableSelectMenuBuilderInstance<CustomId>;
+      opts: Opts & ValidateSelectMenuOptions<Opts, 'MentionableSelectMenu'> & ValidateSelectMenuRequired<Opts>,
+    ): MentionableSelectMenuBuilderInstance<ExtractCustomId<Opts>>;
     from(data: APIMentionableSelectComponent): MentionableSelectMenuBuilder;
   };
 export type MentionableSelectMenuBuilder = MentionableSelectMenuBuilderClass;
 
-export interface BaseChannelSelectMenuOptions<
-  Placeholder extends string = string,
-> extends BaseAutoSelectMenuOptions<Placeholder> {
-  channelTypes?: ChannelType[];
-  channel_types?: ChannelType[];
-}
-
-export type ChannelSelectMenuOptions<
+export interface ChannelSelectMenuOptions<
   CustomId extends string = string,
   Placeholder extends string = string,
-> = BaseChannelSelectMenuOptions<Placeholder> &
-  (
-    | { customId: CustomId; custom_id?: never }
-    | { custom_id: CustomId; customId?: never }
-  );
+  MinValues extends AllowedSelectMenuRange = AllowedSelectMenuRange,
+  MaxValues extends AllowedSelectMenuRange = AllowedSelectMenuRange,
+> {
+  channelTypes?: ChannelType[];
+  channel_types?: ChannelType[];
+  placeholder?: Placeholder;
+  minValues?: MinValues;
+  min_values?: MinValues;
+  maxValues?: MaxValues;
+  max_values?: MaxValues;
+  required?: boolean;
+  disabled?: boolean;
+  customId?: CustomId;
+  custom_id?: CustomId;
+}
 
 export interface ChannelSelectMenuBuilderInstance<CustomId extends string>
   extends ChannelSelectMenuBuilderClass {
@@ -1424,8 +1489,8 @@ class ChannelSelectMenuBuilderClass extends BaseAutoSelectMenuBuilderClass<Parti
    * @param channelTypes Array of channel types to allow
    * @returns This builder instance
    */
-  setChannelTypes(channelTypes: ChannelType[]): this {
-    this.data.channel_types = channelTypes;
+  setChannelTypes(channelTypes: readonly ChannelType[]): this {
+    this.data.channel_types = channelTypes as ChannelType[];
     return this;
   }
 
@@ -1434,7 +1499,7 @@ class ChannelSelectMenuBuilderClass extends BaseAutoSelectMenuBuilderClass<Parti
    * @param channelTypes - The channel types to allow.
    * @returns This builder instance for chaining.
    */
-  addChannelTypes(...channelTypes: ChannelType[]): this {
+  addChannelTypes(...channelTypes: readonly ChannelType[]): this {
     if (!Array.isArray(this.data.channel_types))
       this.data.channel_types = [];
     this.data.channel_types.push(...channelTypes);
@@ -1446,7 +1511,7 @@ class ChannelSelectMenuBuilderClass extends BaseAutoSelectMenuBuilderClass<Parti
    * @param channels - Channel IDs or pre-selected channel value objects.
    * @returns This builder instance for chaining.
    */
-setDefaultChannels(channels: (string | { id: string; type?: SelectMenuDefaultValueType | (string & {}) })[]): this {
+  setDefaultChannels(channels: readonly (string | { id: string; type?: SelectMenuDefaultValueType | (string & {}) })[]): this {
     const vals = channels.map((c) => ({
       id: typeof c === 'string' ? c : c.id,
       type: (typeof c === 'object' && c.type) ? c.type : SelectMenuDefaultValueType.Channel,
@@ -1466,7 +1531,7 @@ setDefaultChannels(channels: (string | { id: string; type?: SelectMenuDefaultVal
    * @param channels - Channel IDs or pre-selected channel value objects to add.
    * @returns This builder instance for chaining.
    */
-  addDefaultChannels(...channels: (string | { id: string; type?: SelectMenuDefaultValueType | (string & {}) })[]): this {
+  addDefaultChannels(...channels: readonly (string | { id: string; type?: SelectMenuDefaultValueType | (string & {}) })[]): this {
     this.addDefaultValuesRaw(
       channels.map((c) => ({
         id: typeof c === 'string' ? c : c.id,
@@ -1490,9 +1555,12 @@ export const ChannelSelectMenuBuilder =
     new <
       CustomId extends string = string,
       Placeholder extends string = string,
+      MinValues extends AllowedSelectMenuRange = AllowedSelectMenuRange,
+      MaxValues extends AllowedSelectMenuRange = AllowedSelectMenuRange,
+      Opts extends ChannelSelectMenuOptions<CustomId, Placeholder, MinValues, MaxValues> = ChannelSelectMenuOptions<CustomId, Placeholder, MinValues, MaxValues>,
     >(
-      opts: ChannelSelectMenuOptions<CustomId, Placeholder>,
-    ): ChannelSelectMenuBuilderInstance<CustomId>;
+      opts: Opts & ValidateSelectMenuOptions<Opts, 'ChannelSelectMenu'> & ValidateSelectMenuRequired<Opts>,
+    ): ChannelSelectMenuBuilderInstance<ExtractCustomId<Opts>>;
     from(data: APIChannelSelectComponent): ChannelSelectMenuBuilder;
   };
 export type ChannelSelectMenuBuilder = ChannelSelectMenuBuilderClass;

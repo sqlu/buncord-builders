@@ -16,13 +16,15 @@ export interface TextInputOptions<
   CustomId extends string = string,
   Placeholder extends string = string,
   Value extends string = string,
+  MinLength extends number = number,
+  MaxLength extends number = number,
 > {
   label?: Label;
   style?: TextInputStyle;
-  minLength?: number;
-  min_length?: number;
-  maxLength?: number;
-  max_length?: number;
+  minLength?: MinLength;
+  min_length?: MinLength;
+  maxLength?: MaxLength;
+  max_length?: MaxLength;
   placeholder?: Placeholder;
   value?: Value;
   required?: boolean;
@@ -238,7 +240,7 @@ constructor(opts: TextInputOptions<string, string, string, string>) {
    * @param cid - The unique custom identifier.
    * @returns This builder instance for chaining.
    */
-  setCustomId(cid: string): this {
+  setCustomId(cid: CheckMinLength<string, 1, 'customId'> & CheckMaxLength<string, 100, 'customId'>): this {
     this.validateCustomId(cid);
     this.data.custom_id = cid;
     return this;
@@ -252,7 +254,7 @@ constructor(opts: TextInputOptions<string, string, string, string>) {
    * @throws If label exceeds 45 characters.
    * @deprecated Wrap in a {@link LabelBuilder} for new designs.
    */
-  setLabel(lbl: string): this {
+  setLabel(lbl: CheckMaxLength<string, 45, 'label'>): this {
     this.validateLength(lbl, 45, 'label');
     this.data.label = lbl;
     return this;
@@ -318,7 +320,7 @@ constructor(opts: TextInputOptions<string, string, string, string>) {
    * @param placeholder - The placeholder string.
    * @returns This builder for chaining.
    */
-  setPlaceholder(placeholder: string): this {
+  setPlaceholder(placeholder: CheckMaxLength<string, 100, 'placeholder'>): this {
     this.validateLength(placeholder, 100, 'placeholder');
     this.data.placeholder = placeholder;
     return this;
@@ -330,7 +332,7 @@ constructor(opts: TextInputOptions<string, string, string, string>) {
    * @param value - The pre-filled string.
    * @returns This builder for chaining.
    */
-  setValue(value: string): this {
+  setValue(value: CheckMaxLength<string, 4000, 'value'>): this {
     this.validateLength(value, 4000, 'value');
     this.data.value = value;
     return this;
@@ -352,27 +354,13 @@ constructor(opts: TextInputOptions<string, string, string, string>) {
    * @returns The JSON representation.
    */
   override toJSON(): APITextInputComponent {
-    const data = this.data;
-    const res: APITextInputComponent = {
-      type: ComponentType.TextInput,
-      custom_id: data.custom_id ?? '',
-      style: data.style ?? TextInputStyle.Short,
-    };
-    const id = this.id;
-    if (id !== undefined) res.id = id;
-    const label = data.label;
-    if (label !== undefined) res.label = label;
-    const placeholder = data.placeholder;
-    if (placeholder !== undefined) res.placeholder = placeholder;
-    const min_length = data.min_length;
-    if (min_length !== undefined) res.min_length = min_length;
-    const max_length = data.max_length;
-    if (max_length !== undefined) res.max_length = max_length;
-    const value = data.value;
-    if (value !== undefined) res.value = value;
-    const required = data.required;
-    if (required !== undefined) res.required = required;
-    return res;
+    if (this.id !== undefined) {
+      (this.data as Record<string, unknown>).id = this.id;
+    }
+    if (this.data.style === undefined) {
+      this.data.style = TextInputStyle.Short;
+    }
+    return this.data as APITextInputComponent;
   }
 }
 
@@ -382,7 +370,9 @@ export const TextInputBuilder = TextInputBuilderClass as unknown as {
     Label extends string = string,
     Placeholder extends string = string,
     Value extends string = string,
-    Opts extends TextInputOptions<Label, CustomId, Placeholder, Value> = TextInputOptions<Label, CustomId, Placeholder, Value>,
+    MinLength extends number = number,
+    MaxLength extends number = number,
+    Opts extends TextInputOptions<Label, CustomId, Placeholder, Value, MinLength, MaxLength> = TextInputOptions<Label, CustomId, Placeholder, Value, MinLength, MaxLength>,
   >(
     opts: Opts & ValidateTextInputOptions<Opts>,
   ): TextInputBuilderInstance<ExtractCustomId<Opts>>;

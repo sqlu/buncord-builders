@@ -46,6 +46,7 @@ describe('StringSelectMenuBuilder', () => {
 
   it('throws if options is empty', () => {
     expect(() =>
+      // @ts-expect-error
       new StringSelectMenuBuilder({
         customId: 'x',
         options: [] as never,
@@ -58,6 +59,7 @@ describe('StringSelectMenuBuilder', () => {
       new StringSelectMenuOptionBuilder({ label: `L${i}`, value: `v${i}` }),
     );
     expect(() =>
+      // @ts-expect-error
       new StringSelectMenuBuilder({ customId: 'x', options: opts as never }),
     ).toThrow('options');
   });
@@ -70,6 +72,7 @@ describe('StringSelectMenuBuilder', () => {
 
   it('validates minValues/maxValues cross-field', () => {
     expect(() =>
+      // @ts-expect-error
       new StringSelectMenuBuilder({
         customId: 'x',
         options: [opt1],
@@ -111,6 +114,7 @@ describe('StringSelectMenuBuilder', () => {
 
   it('rejects minValues 0 unless the modal field is optional', () => {
     expect(() =>
+      // @ts-expect-error
       new StringSelectMenuBuilder({
         customId: 'x',
         options: [opt1],

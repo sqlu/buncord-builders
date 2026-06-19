@@ -6,6 +6,7 @@ import type {
   ChannelType,
   SelectMenuDefaultValueType,
 } from './enums.ts';
+import type { FileUploadRange } from './utils/guards.ts';
 
 export type RGBTuple = [r: number, g: number, b: number];
 export type Snowflake = string;
@@ -254,8 +255,8 @@ export type APIComponent =
 export interface APIFileUploadComponent {
   type: ComponentType.FileUpload;
   custom_id: string;
-  min_values?: number;
-  max_values?: number;
+  min_values?: FileUploadRange;
+  max_values?: FileUploadRange;
   required?: boolean;
   id?: number;
 }

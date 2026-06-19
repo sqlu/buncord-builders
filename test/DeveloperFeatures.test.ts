@@ -10,6 +10,15 @@ import {
   LabelBuilder,
   TextInputBuilder,
   CheckboxBuilder,
+  CheckboxGroupBuilder,
+  CheckboxGroupOptionBuilder,
+  RadioGroupBuilder,
+  RadioGroupOptionBuilder,
+  FileUploadBuilder,
+  ThumbnailBuilder,
+  FileBuilder,
+  MediaGalleryBuilder,
+  MediaGalleryItemBuilder,
   StringSelectMenuBuilder,
   SectionBuilder,
   UserSelectMenuBuilder,
@@ -199,6 +208,80 @@ describe('Developer Features', () => {
         // @ts-expect-error - Too many buttons (> 5)
         new ActionRowBuilder().addComponents(btn, btn, btn, btn, btn, btn);
       }).toThrow('components size can\'t exceed 5');
+    });
+  });
+
+  describe('Builder Compile-Time Type Safety', () => {
+    it('verifies compilation errors under ts-expect-error', () => {
+      const compileTimeOnly = () => {
+        // --- BUTTONS ---
+        // @ts-expect-error - Link button cannot have customId
+        new ButtonBuilder({ style: ButtonStyle.Link, customId: 'foo', url: 'https://example.com' });
+        // @ts-expect-error - Link button must have URL
+        new ButtonBuilder({ style: ButtonStyle.Link, label: 'No URL' });
+        // @ts-expect-error - Premium button cannot have URL
+        new ButtonBuilder({ style: ButtonStyle.Premium, skuId: '123', url: 'https://example.com' });
+
+        // --- TEXT INPUT ---
+        // @ts-expect-error - minLength > maxLength
+        new TextInputBuilder({ customId: 'txt', label: 'L', minLength: 10, maxLength: 5 });
+
+        // --- CHECKBOX GROUP ---
+        // @ts-expect-error - minValues > maxValues
+        new CheckboxGroupBuilder({
+          customId: 'check',
+          options: [
+            new CheckboxGroupOptionBuilder({ value: '1', label: '1' }),
+            new CheckboxGroupOptionBuilder({ value: '2', label: '2' }),
+          ],
+          minValues: 3,
+          maxValues: 2,
+        });
+
+        // --- RADIO GROUP ---
+        // @ts-expect-error - Too few options (< 2)
+        new RadioGroupBuilder({
+          customId: 'radio',
+          options: [
+            new RadioGroupOptionBuilder({ value: '1', label: '1' })
+          ],
+        });
+
+        // --- FILE UPLOAD ---
+        // @ts-expect-error - minValues > maxValues
+        new FileUploadBuilder({ customId: 'file', minValues: 3, maxValues: 2 });
+
+        // --- SELECT MENUS ---
+        // @ts-expect-error - placeholder too long
+        new StringSelectMenuBuilder({
+          customId: 'sel',
+          options: [{ label: 'O', value: 'v' }],
+          placeholder: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        });
+
+        // --- TEXT DISPLAY ---
+        new TextDisplayBuilder({ content: 'a'.repeat(4001) });
+
+        // --- THUMBNAIL ---
+        // @ts-expect-error - URL missing valid scheme
+        new ThumbnailBuilder({ url: 'ftp://bad' });
+
+        // --- FILE ---
+        // @ts-expect-error - URL missing attachment:// scheme
+        new FileBuilder({ url: 'https://bad' });
+
+        // --- MEDIA GALLERY ITEM ---
+        // @ts-expect-error - URL missing valid scheme
+        new MediaGalleryItemBuilder({ url: 'ftp://bad' });
+      };
+
+      // We do not call compileTimeOnly() at runtime as it contains intentionally invalid
+      // constructions that throw runtime errors, but its types are fully validated by tsc.
+      expect(true).toBe(true);
+    });
+
+    it('throws if content exceeds 4000 characters', () => {
+      expect(() => new TextDisplayBuilder({ content: 'a'.repeat(4001) })).toThrow();
     });
   });
 

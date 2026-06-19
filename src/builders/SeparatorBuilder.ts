@@ -107,11 +107,10 @@ constructor(opts: SeparatorOptions = {}) {
    * @returns The JSON representation.
    */
   override toJSON(): APISeparatorComponent {
-    const res: APISeparatorComponent = { type: ComponentType.Separator };
-    if (this.id !== undefined) res.id = this.id;
-    if (this.data.divider !== undefined) res.divider = this.data.divider;
-    if (this.data.spacing !== undefined) res.spacing = this.data.spacing;
-    return res;
+    if (this.id !== undefined) {
+      (this.data as Record<string, unknown>).id = this.id;
+    }
+    return this.data as APISeparatorComponent;
   }
 }
 

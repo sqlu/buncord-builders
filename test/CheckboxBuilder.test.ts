@@ -127,6 +127,7 @@ describe('CheckboxGroupBuilder', () => {
 
   it('rejects zero minValues when required is omitted or true', () => {
     expect(() =>
+      // @ts-expect-error
       new CheckboxGroupBuilder({
         customId: 'x',
         options: [opt1, opt2],
@@ -134,6 +135,7 @@ describe('CheckboxGroupBuilder', () => {
       }),
     ).toThrow('required is false');
     expect(() =>
+      // @ts-expect-error
       new CheckboxGroupBuilder({
         customId: 'x',
         options: [opt1, opt2],
@@ -154,6 +156,7 @@ describe('CheckboxGroupBuilder', () => {
 
   it('validates minValues and maxValues limits', () => {
     expect(() =>
+      // @ts-expect-error
       new CheckboxGroupBuilder({
         customId: 'x',
         options: [opt1, opt2],

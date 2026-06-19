@@ -162,7 +162,7 @@ class ModalBuilderClass<
    * @returns This builder instance
    * @throws If title exceeds 45 characters
    */
-  setTitle(title: string): this {
+  setTitle(title: CheckMinLength<string, 1, 'title'> & CheckMaxLength<string, 45, 'title'>): this {
     if (title.length > 45) {
       throw new Error(`title is too long, max is 45 characters but got ${title.length}`);
     }
@@ -175,7 +175,7 @@ class ModalBuilderClass<
    * @param cid - The unique custom identifier.
    * @returns This builder instance for chaining.
    */
-  setCustomId(cid: string): this {
+  setCustomId(cid: CheckMinLength<string, 1, 'customId'> & CheckMaxLength<string, 100, 'customId'>): this {
     if (cid.length < 1) {
       throw new Error('customId needs to be at least 1 character');
     }
@@ -349,11 +349,10 @@ class ModalBuilderClass<
     for (let i = 0; i < len; i++) {
       serializedComps[i] = comps![i]!.toJSON() as APIModalComponent;
     }
-    const payload: APIModalStructure = {
-      title: this.data.title ?? '',
-      custom_id: this.data.custom_id ?? '',
+    const payload = {
+      ...this.data,
       components: serializedComps,
-    };
+    } as APIModalStructure;
     BaseComponent.validateTreeLimits(payload);
     return payload;
   }
@@ -368,7 +367,7 @@ export const ModalBuilder = ModalBuilderClass as unknown as {
   new <
     Title extends string = string,
     CustomId extends string = string,
-    Opts extends ModalOptions<Title, CustomId, any> = ModalOptions<Title, CustomId, any>,
+    Opts extends ModalOptions<Title, CustomId, readonly ModalComponent[]> = ModalOptions<Title, CustomId, readonly ModalComponent[]>,
   >(
     opts: Opts & ValidateModalOptions<Opts>,
   ): ModalBuilderInstance<ExtractCustomId<Opts>, ExtractComponents<Opts>>;

@@ -317,9 +317,33 @@ const svgTemplate = `<svg width="800" height="460" viewBox="0 0 800 460" fill="n
 await Bun.write("assets/benchmark.svg", svgTemplate);
 console.log("Updated assets/benchmark.svg successfully.");
 
+const speedBadgeSvg = `<svg width="220" height="28" viewBox="0 0 220 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad-ours" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#FF3B92"/>
+      <stop offset="100%" stop-color="#FF85B6"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#FF3B92" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  <rect x="0.5" y="0.5" width="219" height="27" rx="6" fill="#18191c" stroke="#30363d" stroke-width="1"/>
+  <!-- Left Side Label -->
+  <text x="12" y="18" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="700" fill="#8b949e" letter-spacing="0.5">PERFORMANCE</text>
+  <!-- Divider -->
+  <line x1="110" y1="4" x2="110" y2="24" stroke="#30363d" stroke-width="1"/>
+  <!-- Right Side Value -->
+  <rect x="116" y="5" width="98" height="18" rx="4" fill="url(#grad-ours)" filter="url(#glow)"/>
+  <text x="165" y="17" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="800" fill="#ffffff" text-anchor="middle" letter-spacing="0.5">~${totSpeed.toFixed(1)}x FASTER</text>
+</svg>`;
+
+await Bun.write("assets/badge-speed.svg", speedBadgeSvg);
+console.log("Updated assets/badge-speed.svg successfully.");
+
+
 const readmeContent = await Bun.file("README.md").text();
 const startMarker = "## Benchmarks";
-const endMarker = "To run the benchmark yourself:";
+const endMarker = "## Component Architecture";
 
 const startIdx = readmeContent.indexOf(startMarker);
 const endIdx = readmeContent.indexOf(endMarker);

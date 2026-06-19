@@ -6,6 +6,8 @@ import type {
   ExtractCustomId,
   GetCustomIdField,
   CheckStringConstraints,
+  CheckMinLength,
+  CheckMaxLength,
 } from '../utils/guards.ts';
 
 export interface CheckboxOptions<CustomId extends string = string> {
@@ -102,7 +104,7 @@ class CheckboxBuilderClass extends BaseComponent<Partial<APICheckboxComponent>> 
 * @param cid - The unique custom identifier.
 * @returns This builder instance for chaining.
 */
-  setCustomId(cid: string): this {
+  setCustomId(cid: CheckMinLength<string, 1, 'customId'> & CheckMaxLength<string, 100, 'customId'>): this {
     this.validateCustomId(cid);
     this.data.custom_id = cid;
     return this;
@@ -127,13 +129,10 @@ class CheckboxBuilderClass extends BaseComponent<Partial<APICheckboxComponent>> 
    * @see {@link https://discord.com/developers/docs/components/reference#checkbox Checkbox Discord Doc}
    */
   override toJSON(): APICheckboxComponent {
-    const res: APICheckboxComponent = {
-      type: ComponentType.Checkbox,
-      custom_id: this.data.custom_id ?? '',
-    };
-    if (this.id !== undefined) res.id = this.id;
-    if (this.data.default !== undefined) res.default = this.data.default;
-    return res;
+    if (this.id !== undefined) {
+      (this.data as Record<string, unknown>).id = this.id;
+    }
+    return this.data as APICheckboxComponent;
   }
 }
 

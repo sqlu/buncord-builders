@@ -2,6 +2,7 @@ import { ComponentType } from '../enums.ts';
 import type { APIFileUploadComponent } from '../types.ts';
 import type {
   CheckMaxLength,
+  CheckMinLength,
   FileUploadRange,
   ExtractCustomId,
   IsLessThanOrEqual,
@@ -11,20 +12,23 @@ import type {
 } from '../utils/guards.ts';
 import { BaseComponent, resolveRaw } from './base.ts';
 
-export interface BaseFileUploadOptions {
+export interface BaseFileUploadOptions<
+  MinValues extends FileUploadRange = FileUploadRange,
+  MaxValues extends FileUploadRange = FileUploadRange,
+> {
   customId?: string;
   custom_id?: string;
   /**
    * Minimum number of files required to upload (0–10).
    * Set to `0` only when `required` is `false`.
    */
-  minValues?: FileUploadRange;
+  minValues?: MinValues;
   /** Alias for {@link minValues} using the raw API field name. */
-  min_values?: FileUploadRange;
+  min_values?: MinValues;
   /** Maximum number of files allowed to upload (1–10). */
-  maxValues?: FileUploadRange;
+  maxValues?: MaxValues;
   /** Alias for {@link maxValues} using the raw API field name. */
-  max_values?: FileUploadRange;
+  max_values?: MaxValues;
   /** Whether at least one file must be uploaded. */
   required?: boolean;
 }
@@ -70,8 +74,8 @@ class FileUploadBuilderClass extends BaseComponent<Partial<APIFileUploadComponen
   public static from(data: APIFileUploadComponent): FileUploadBuilderClass {
     const raw = resolveRaw(data) as unknown as APIFileUploadComponent;
     const builder = new FileUploadBuilderClass({ customId: raw.custom_id } as unknown as FileUploadOptions<string>);
-    if (raw.min_values !== undefined) builder.setMinValues(raw.min_values);
-    if (raw.max_values !== undefined) builder.setMaxValues(raw.max_values);
+    if (raw.min_values !== undefined) builder.setMinValues(raw.min_values as FileUploadRange);
+    if (raw.max_values !== undefined) builder.setMaxValues(raw.max_values as FileUploadRange);
     if (raw.required !== undefined) builder.setRequired(raw.required);
     if (raw.id !== undefined) builder.setId(raw.id);
     return builder;
@@ -149,7 +153,7 @@ class FileUploadBuilderClass extends BaseComponent<Partial<APIFileUploadComponen
 * @param cid - The unique custom identifier.
 * @returns This builder instance for chaining.
 */
-  setCustomId(cid: string): this {
+  setCustomId(cid: CheckMinLength<string, 1, 'customId'> & CheckMaxLength<string, 100, 'customId'>): this {
     this.validateCustomId(cid);
     this.data.custom_id = cid;
     return this;
@@ -163,7 +167,7 @@ class FileUploadBuilderClass extends BaseComponent<Partial<APIFileUploadComponen
    * @returns This builder for chaining.
    * @throws If `min` is out of range or exceeds `maxValues`.
    */
-  setMinValues(min: number): this {
+  setMinValues(min: FileUploadRange): this {
     this.validateFileUploadValues(min, this.data.max_values);
     this.data.min_values = min;
     return this;
@@ -176,7 +180,7 @@ class FileUploadBuilderClass extends BaseComponent<Partial<APIFileUploadComponen
    * @returns This builder for chaining.
    * @throws If `max` is out of range or less than `minValues`.
    */
-  setMaxValues(max: number): this {
+  setMaxValues(max: FileUploadRange): this {
     this.validateFileUploadValues(this.data.min_values, max);
     this.data.max_values = max;
     return this;
@@ -200,13 +204,10 @@ class FileUploadBuilderClass extends BaseComponent<Partial<APIFileUploadComponen
    * @returns The JSON representation.
    */
   override toJSON(): Record<string, unknown> {
-    const res: Record<string, unknown> = { type: ComponentType.FileUpload };
-    if (this.id !== undefined) res.id = this.id;
-    if (this.data.custom_id !== undefined) res.custom_id = this.data.custom_id;
-    if (this.data.min_values !== undefined) res.min_values = this.data.min_values;
-    if (this.data.max_values !== undefined) res.max_values = this.data.max_values;
-    if (this.data.required !== undefined) res.required = this.data.required;
-    return res;
+    if (this.id !== undefined) {
+      (this.data as Record<string, unknown>).id = this.id;
+    }
+    return this.data as Record<string, unknown>;
   }
 }
 
@@ -243,7 +244,11 @@ export type ValidateFileUploadOptions<Opts> =
   : { readonly error: 'FileUpload requires a customId or custom_id property' };
 
 export const FileUploadBuilder = FileUploadBuilderClass as unknown as {
-  new <Opts extends BaseFileUploadOptions>(
+  new <
+    MinValues extends FileUploadRange = FileUploadRange,
+    MaxValues extends FileUploadRange = FileUploadRange,
+    Opts extends BaseFileUploadOptions<MinValues, MaxValues> = BaseFileUploadOptions<MinValues, MaxValues>,
+  >(
     opts: Opts & ValidateFileUploadOptions<Opts> & ValidateSelectMenuRequired<Opts>,
   ): FileUploadBuilderInstance<ExtractCustomId<Opts>>;
   from(data: APIFileUploadComponent): FileUploadBuilder;

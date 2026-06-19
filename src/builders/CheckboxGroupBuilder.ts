@@ -37,12 +37,14 @@ export interface CheckboxGroupOptionOptions<
 export interface CheckboxGroupOptions<
   CustomId extends string = string,
   Options extends readonly CheckboxGroupOptionBuilder[] = readonly CheckboxGroupOptionBuilder[],
+  MinValues extends number = number,
+  MaxValues extends number = number,
 > {
-  options: Options;
-  minValues?: number;
-  min_values?: number;
-  maxValues?: number;
-  max_values?: number;
+  options: readonly [...Options];
+  minValues?: MinValues;
+  min_values?: MinValues;
+  maxValues?: MaxValues;
+  max_values?: MaxValues;
   required?: boolean;
   customId?: CustomId;
   custom_id?: CustomId;
@@ -157,7 +159,7 @@ constructor(opts: CheckboxGroupOptionOptions<string, string, string>) {
    * @returns This builder instance
    * @throws If value is empty or exceeds 100 characters
    */
-  setValue(val: string): this {
+  setValue(val: CheckMinLength<string, 1, 'value'> & CheckMaxLength<string, 100, 'value'>): this {
     if (val.length < 1) {
       throw new Error('value needs to be at least 1 character');
     }
@@ -174,7 +176,7 @@ constructor(opts: CheckboxGroupOptionOptions<string, string, string>) {
    * @returns This builder instance
    * @throws If label exceeds 100 characters
    */
-  setLabel(lbl: string): this {
+  setLabel(lbl: CheckMaxLength<string, 100, 'label'>): this {
     if (lbl.length > 100) {
       throw new Error(`label is too long, max is 100 characters but got ${lbl.length}`);
     }
@@ -188,7 +190,7 @@ constructor(opts: CheckboxGroupOptionOptions<string, string, string>) {
    * @returns This builder instance
    * @throws If description exceeds 100 characters
    */
-  setDescription(desc: string): this {
+  setDescription(desc: CheckMaxLength<string, 100, 'description'>): this {
     if (desc.length > 100) {
       throw new Error(`description is too long, max is 100 characters but got ${desc.length}`);
     }
@@ -214,13 +216,7 @@ constructor(opts: CheckboxGroupOptionOptions<string, string, string>) {
   toJSON(): APICheckboxGroupOption {
     if (!this.data.value) throw new Error('value is required');
     if (!this.data.label) throw new Error('label is required');
-    const res: APICheckboxGroupOption = {
-      value: this.data.value,
-      label: this.data.label,
-    };
-    if (this.data.description !== undefined) res.description = this.data.description;
-    if (this.data.default !== undefined) res.default = this.data.default;
-    return res;
+    return this.data as APICheckboxGroupOption;
   }
 }
 
@@ -382,7 +378,7 @@ constructor(opts: CheckboxGroupOptions<string, CheckboxGroupOptionBuilder[]>) {
    * @param cid - The unique custom identifier.
    * @returns This builder instance for chaining.
    */
-  setCustomId(cid: string): this {
+  setCustomId(cid: CheckMinLength<string, 1, 'customId'> & CheckMaxLength<string, 100, 'customId'>): this {
     this.validateCustomId(cid);
     this.data.custom_id = cid;
     return this;
@@ -482,20 +478,24 @@ constructor(opts: CheckboxGroupOptions<string, CheckboxGroupOptionBuilder[]>) {
    * @returns The JSON representation
    */
   override toJSON(): APICheckboxGroupComponent {
-    const rawOpts = this.data.options as unknown as readonly { toJSON(): APICheckboxGroupOption }[];
-    const len = rawOpts.length;
+    const rawOpts = this.data.options;
+    const len = rawOpts ? rawOpts.length : 0;
     const serializedOpts = new Array<APICheckboxGroupOption>(len);
-    for (let i = 0; i < len; i++) serializedOpts[i] = rawOpts[i]!.toJSON();
-    const res: APICheckboxGroupComponent = {
-      type: ComponentType.CheckboxGroup,
-      custom_id: this.data.custom_id ?? '',
+    for (let i = 0; i < len; i++) {
+      const o = rawOpts![i];
+      if (o) {
+        serializedOpts[i] = 'toJSON' in o && typeof o.toJSON === 'function'
+          ? (o as { toJSON(): APICheckboxGroupOption }).toJSON()
+          : (o as APICheckboxGroupOption);
+      }
+    }
+    if (this.id !== undefined) {
+      (this.data as Record<string, unknown>).id = this.id;
+    }
+    return {
+      ...this.data,
       options: serializedOpts,
-    };
-    if (this.id !== undefined) res.id = this.id;
-    if (this.data.min_values !== undefined) res.min_values = this.data.min_values;
-    if (this.data.max_values !== undefined) res.max_values = this.data.max_values;
-    if (this.data.required !== undefined) res.required = this.data.required;
-    return res;
+    } as APICheckboxGroupComponent;
   }
 }
 
@@ -507,7 +507,10 @@ type ExtractCheckboxGroupOptions<Opts> =
 export const CheckboxGroupBuilder = CheckboxGroupBuilderClass as unknown as {
   new <
     CustomId extends string = string,
-    Opts extends CheckboxGroupOptions<CustomId, any> = CheckboxGroupOptions<CustomId, any>,
+    Options extends readonly CheckboxGroupOptionBuilder[] = readonly CheckboxGroupOptionBuilder[],
+    MinValues extends number = number,
+    MaxValues extends number = number,
+    Opts extends CheckboxGroupOptions<CustomId, Options, MinValues, MaxValues> = CheckboxGroupOptions<CustomId, Options, MinValues, MaxValues>,
   >(
     opts: Opts & ValidateCheckboxGroupOptions<Opts> & ValidateSelectMenuRequired<Opts>,
   ): CheckboxGroupBuilderInstance<ExtractCustomId<Opts>, ExtractCheckboxGroupOptions<Opts>>;

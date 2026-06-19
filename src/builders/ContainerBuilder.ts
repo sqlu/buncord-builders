@@ -261,22 +261,22 @@ class ContainerBuilderClass extends BaseComponent<Partial<APIContainerComponent>
    */
   override toJSON(): APIContainerComponent {
     const comps = this.data.components;
-    if (!comps || comps.length === 0) {
+    const len = comps ? comps.length : 0;
+    if (len === 0) {
       throw new Error('need at least one component to serialize');
     }
-    const len = comps.length;
     const serialized = new Array(len);
     for (let i = 0; i < len; i++) {
-      const c = comps[i] as ContainerComponent;
+      const c = comps![i] as ContainerComponent;
       serialized[i] = c.toJSON();
     }
-    const res: APIContainerComponent = {
-      type: ComponentType.Container,
+    if (this.id !== undefined) {
+      (this.data as Record<string, unknown>).id = this.id;
+    }
+    const res = {
+      ...this.data,
       components: serialized,
-    };
-    if (this.id !== undefined) res.id = this.id;
-    if (this.data.accent_color !== undefined) res.accent_color = this.data.accent_color;
-    if (this.data.spoiler !== undefined) res.spoiler = this.data.spoiler;
+    } as APIContainerComponent;
     BaseComponent.validateTreeLimits(res);
     return res;
   }

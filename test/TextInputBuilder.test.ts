@@ -77,6 +77,7 @@ describe('TextInputBuilder', () => {
 
   it('throws if minLength > maxLength', () => {
     expect(() =>
+      // @ts-expect-error
       new TextInputBuilder({
         customId: 'x',
         label: 'Test',

@@ -3,6 +3,66 @@ import type { APIComponent, JSONifiable } from '../types.ts';
 
 const AUDIT_TEXT_FIELDS = ['content', 'label', 'description', 'placeholder', 'value', 'title'] as const;
 
+const limitsState = {
+  count: 0,
+  textLen: 0,
+};
+
+function scanTreeLimits(c: unknown): void {
+  if (!c) return;
+
+  const payload = (typeof c === 'object' && c !== null && typeof (c as JSONifiable).toJSON === 'function')
+    ? (c as JSONifiable).toJSON() as Record<string, unknown>
+    : (c as Record<string, unknown>);
+
+  if (typeof payload.type === 'number') limitsState.count++;
+
+  if (typeof payload.content === 'string') limitsState.textLen += payload.content.length;
+  if (typeof payload.label === 'string') limitsState.textLen += payload.label.length;
+  if (typeof payload.description === 'string') limitsState.textLen += payload.description.length;
+  if (typeof payload.placeholder === 'string') limitsState.textLen += payload.placeholder.length;
+  if (typeof payload.value === 'string') limitsState.textLen += payload.value.length;
+  if (typeof payload.title === 'string') limitsState.textLen += payload.title.length;
+
+  const comps = payload.components;
+  if (Array.isArray(comps)) {
+    const len = comps.length;
+    for (let i = 0; i < len; i++) scanTreeLimits(comps[i]);
+  }
+  const comp = payload.component;
+  if (comp != null && typeof comp === 'object') {
+    scanTreeLimits(comp);
+  }
+  const opts = payload.options;
+  if (Array.isArray(opts)) {
+    const len = opts.length;
+    for (let i = 0; i < len; i++) scanTreeLimits(opts[i]);
+  }
+  const items = payload.items;
+  if (Array.isArray(items)) {
+    const len = items.length;
+    for (let i = 0; i < len; i++) scanTreeLimits(items[i]);
+  }
+  const acc = payload.accessory;
+  if (acc != null && typeof acc === 'object') {
+    scanTreeLimits(acc);
+  }
+  const f = payload.file;
+  if (f != null && typeof f === 'object') {
+    scanTreeLimits(f);
+  }
+  const m = payload.media;
+  if (m != null && typeof m === 'object') {
+    scanTreeLimits(m);
+  }
+  const files = payload.files;
+  if (Array.isArray(files)) {
+    const len = files.length;
+    for (let i = 0; i < len; i++) scanTreeLimits(files[i]);
+  }
+}
+
+
 /**
  * Base component class for all builders.
  * Manages the component type, optional database/Discord ID, and payload serialization.
@@ -169,73 +229,16 @@ export abstract class BaseComponent<
 * @throws If the component layout or text sizes exceed Discord limits.
 */
   public static validateTreeLimits(root: unknown): void {
-    let count = 0;
-    let textLen = 0;
+    limitsState.count = 0;
+    limitsState.textLen = 0;
 
-    function scan(c: unknown): void {
-      // skip empty check
-      if (!c) return;
+    scanTreeLimits(root);
 
-      const payload = (typeof c === 'object' && c !== null && typeof (c as JSONifiable).toJSON === 'function')
-        ? (c as JSONifiable).toJSON() as Record<string, unknown>
-        : (c as Record<string, unknown>);
-
-      if (typeof payload.type === 'number') count++;
-
-      // no array loops for string properties: inline checking
-      if (payload.content !== undefined && typeof payload.content === 'string') textLen += payload.content.length;
-      if (payload.label !== undefined && typeof payload.label === 'string') textLen += payload.label.length;
-      if (payload.description !== undefined && typeof payload.description === 'string') textLen += payload.description.length;
-      if (payload.placeholder !== undefined && typeof payload.placeholder === 'string') textLen += payload.placeholder.length;
-      if (payload.value !== undefined && typeof payload.value === 'string') textLen += payload.value.length;
-      if (payload.title !== undefined && typeof payload.title === 'string') textLen += payload.title.length;
-
-      // real for loops, avoiding slow for...of or forEach
-      const comps = payload.components;
-      if (Array.isArray(comps)) {
-        const len = comps.length;
-        for (let i = 0; i < len; i++) scan(comps[i]);
-      }
-      const comp = payload.component;
-      if (comp != null && typeof comp === 'object') {
-        scan(comp);
-      }
-      const opts = payload.options;
-      if (Array.isArray(opts)) {
-        const len = opts.length;
-        for (let i = 0; i < len; i++) scan(opts[i]);
-      }
-      const items = payload.items;
-      if (Array.isArray(items)) {
-        const len = items.length;
-        for (let i = 0; i < len; i++) scan(items[i]);
-      }
-      const acc = payload.accessory;
-      if (acc != null && typeof acc === 'object') {
-        scan(acc);
-      }
-      const f = payload.file;
-      if (f != null && typeof f === 'object') {
-        scan(f);
-      }
-      const m = payload.media;
-      if (m != null && typeof m === 'object') {
-        scan(m);
-      }
-      const files = payload.files;
-      if (Array.isArray(files)) {
-        const len = files.length;
-        for (let i = 0; i < len; i++) scan(files[i]);
-      }
+    if (limitsState.count > 40) {
+      throw new Error(`too many components, discord limit is 40 but got ${limitsState.count}`);
     }
-
-    scan(root);
-
-    if (count > 40) {
-      throw new Error(`too many components, discord limit is 40 but got ${count}`);
-    }
-    if (textLen > 4000) {
-      throw new Error(`total text is too long, max 4000 characters but got ${textLen}`);
+    if (limitsState.textLen > 4000) {
+      throw new Error(`total text is too long, max 4000 characters but got ${limitsState.textLen}`);
     }
   }
   /**

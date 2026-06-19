@@ -9,9 +9,9 @@ describe('Performance Benchmarks', () => {
 
     // 1. @discordjs/builders - Instanciation seule
     const startDjsInst = performance.now();
-    const djsRows: any[] = [];
+    const djsRows: DjsActionRowBuilder<DjsButtonBuilder | DjsStringSelectMenuBuilder>[] = [];
     for (let i = 0; i < ITERATIONS; i++) {
-      const row = new DjsActionRowBuilder()
+      const row = new DjsActionRowBuilder<DjsButtonBuilder | DjsStringSelectMenuBuilder>()
         .addComponents(
           new DjsButtonBuilder()
             .setCustomId(`btn_${i}`)
@@ -33,14 +33,14 @@ describe('Performance Benchmarks', () => {
     // 2. @discordjs/builders - Sérialisation seule
     const startDjsSer = performance.now();
     for (let i = 0; i < ITERATIONS; i++) {
-      djsRows[i].toJSON();
+      djsRows[i]!.toJSON();
     }
     const endDjsSer = performance.now();
     const timeDjsSer = endDjsSer - startDjsSer;
 
     // 3. @discordts/builders - Instanciation seule
     const startOursInst = performance.now();
-    const ourRows: any[] = [];
+    const ourRows: ActionRowBuilder[] = [];
     for (let i = 0; i < ITERATIONS; i++) {
       const row = new ActionRowBuilder({
         components: [
@@ -69,7 +69,7 @@ describe('Performance Benchmarks', () => {
     // 4. @discordts/builders - Sérialisation seule
     const startOursSer = performance.now();
     for (let i = 0; i < ITERATIONS; i++) {
-      ourRows[i].toJSON();
+      ourRows[i]!.toJSON();
     }
     const endOursSer = performance.now();
     const timeOursSer = endOursSer - startOursSer;
@@ -86,7 +86,7 @@ describe('Performance Benchmarks', () => {
     console.log(`Ratio Total                         : ${((timeDjsInst + timeDjsSer) / (timeOursInst + timeOursSer)).toFixed(1)}x faster!\n`);
 
     // Verify correctness: both builders must serialize to the same JSON structure
-    expect(ourRows[0].toJSON().type).toBe(djsRows[0].toJSON().type);
-    expect(ourRows[0].toJSON().components.length).toBe(djsRows[0].toJSON().components.length);
+    expect(ourRows[0]!.toJSON().type as number).toBe(djsRows[0]!.toJSON().type as number);
+    expect(ourRows[0]!.toJSON().components.length).toBe(djsRows[0]!.toJSON().components.length);
   });
 });

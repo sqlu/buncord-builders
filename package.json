@@ -3,8 +3,9 @@
   "version": "0.1.0",
   "description": "Type-safe Discord component builders for Bun",
   "type": "module",
+  "private": false,
   "license": "MIT",
-  "author": "discordts",
+  "author": "discordts's team",
   "keywords": [
     "discord",
     "builders",

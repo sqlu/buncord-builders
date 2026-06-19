@@ -37,35 +37,35 @@ export type ValidateButtonOptions<Opts> =
   : CheckStringConstraints<GetCustomIdField<Opts>, 1, 100, 'customId'> extends { readonly error: string }
   ? CheckStringConstraints<GetCustomIdField<Opts>, 1, 100, 'customId'>
   : Opts extends { style: ButtonStyle.Link }
-  ? (Opts extends { customId: any } | { custom_id: any }
+  ? (Opts extends { customId: unknown } | { custom_id: unknown }
       ? { readonly error: 'Link button must not have a customId or custom_id property' }
-      : Opts extends { skuId: any } | { sku_id: any }
+      : Opts extends { skuId: unknown } | { sku_id: unknown }
       ? { readonly error: 'Link button must not have a skuId or sku_id property' }
       : Opts extends { url: string }
-      ? (Opts extends { label: string } | { emoji: any }
+      ? (Opts extends { label: string } | { emoji: unknown }
           ? unknown
           : { readonly error: 'Link button must have a label or emoji' })
       : { readonly error: 'Link button requires a url' })
   : Opts extends { style: ButtonStyle.Premium }
-  ? (Opts extends { customId: any } | { custom_id: any }
+  ? (Opts extends { customId: unknown } | { custom_id: unknown }
       ? { readonly error: 'Premium button must not have a customId or custom_id property' }
-      : Opts extends { url: any }
+      : Opts extends { url: unknown }
       ? { readonly error: 'Premium button must not have a url property' }
-      : Opts extends { label: any }
+      : Opts extends { label: unknown }
       ? { readonly error: 'Premium button must not have a label property' }
-      : Opts extends { emoji: any }
+      : Opts extends { emoji: unknown }
       ? { readonly error: 'Premium button must not have an emoji property' }
       : Opts extends { skuId: string } | { sku_id: string }
       ? unknown
       : { readonly error: 'Premium button requires a skuId or sku_id' })
-  : (Opts extends { url: any }
+  : (Opts extends { url: unknown }
       ? { readonly error: 'Regular button must not have a url property' }
-      : Opts extends { skuId: any } | { sku_id: any }
+      : Opts extends { skuId: unknown } | { sku_id: unknown }
       ? { readonly error: 'Regular button must not have a skuId or sku_id property' }
       : Opts extends { customId: string } | { custom_id: string }
       ? (Opts extends { customId: string; custom_id: string }
           ? { readonly error: 'Cannot specify both customId and custom_id' }
-          : Opts extends { label: string } | { emoji: any }
+          : Opts extends { label: string } | { emoji: unknown }
           ? unknown
           : { readonly error: 'Regular button must have a label or emoji' })
       : { readonly error: 'Regular button requires a customId or custom_id property' });
@@ -276,7 +276,7 @@ class ButtonBuilderClass extends BaseComponent<Partial<APIButtonComponent>> {
    * @param lbl The label text.
    * @returns The builder instance for chaining.
    */
-  setLabel(lbl: string): this {
+  setLabel(lbl: CheckMaxLength<string, 80, 'label'>): this {
     this.validateLength(lbl, 80, 'label');
     this.data.label = lbl;
     return this;
@@ -297,7 +297,7 @@ class ButtonBuilderClass extends BaseComponent<Partial<APIButtonComponent>> {
    * @param cid - The unique custom identifier.
    * @returns This builder instance for chaining.
    */
-  setCustomId(cid: string): this {
+  setCustomId(cid: CheckMinLength<string, 1, 'customId'> & CheckMaxLength<string, 100, 'customId'>): this {
     this.validateCustomId(cid);
     this.data.custom_id = cid;
     return this;
@@ -308,7 +308,7 @@ class ButtonBuilderClass extends BaseComponent<Partial<APIButtonComponent>> {
    * @param skuId The SKU identifier.
    * @returns The builder instance for chaining.
    */
-  setSKUId(skuId: string): this {
+  setSKUId(skuId: CheckMinLength<string, 1, 'skuId'> & CheckMaxLength<string, 100, 'skuId'>): this {
     this.data.sku_id = skuId;
     return this;
   }
@@ -318,7 +318,7 @@ class ButtonBuilderClass extends BaseComponent<Partial<APIButtonComponent>> {
    * @param url The link URL.
    * @returns The builder instance for chaining.
    */
-  setURL(url: string): this {
+  setURL(url: CheckUrl<string> & CheckMaxLength<string, 512, 'url'>): this {
     this.validateLength(url, 512, 'url');
     this.validateHttpUrl(url, 'url');
     this.data.url = url;
@@ -343,19 +343,13 @@ class ButtonBuilderClass extends BaseComponent<Partial<APIButtonComponent>> {
    * @see {@link https://discord.com/developers/docs/interactions/message-components#button-object}
    */
   override toJSON(): APIButtonComponent {
-    const data = this.data;
-    const res: APIButtonComponent = {
-      type: ComponentType.Button,
-      style: data.style ?? ButtonStyle.Primary,
-    };
-    if (this.id !== undefined) res.id = this.id;
-    if (data.label !== undefined) res.label = data.label;
-    if (data.emoji !== undefined) res.emoji = data.emoji;
-    if (data.disabled !== undefined) res.disabled = data.disabled;
-    if (data.custom_id !== undefined) res.custom_id = data.custom_id;
-    if (data.url !== undefined) res.url = data.url;
-    if (data.sku_id !== undefined) res.sku_id = data.sku_id;
-    return res;
+    if (this.id !== undefined) {
+      (this.data as Record<string, unknown>).id = this.id;
+    }
+    if (this.data.style === undefined) {
+      this.data.style = ButtonStyle.Primary;
+    }
+    return this.data as APIButtonComponent;
   }
 }
 

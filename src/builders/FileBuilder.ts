@@ -1,5 +1,6 @@
 import { ComponentType } from '../enums.ts';
 import type { APIFileComponent } from '../types.ts';
+import type { CheckAttachmentUrl, CheckMaxLength } from '../utils/guards.ts';
 import { BaseComponent, resolveRaw } from './base.ts';
 
 export interface FileOptions {
@@ -8,6 +9,13 @@ export interface FileOptions {
   /** Whether to blur the file preview behind a spoiler overlay. */
   spoiler?: boolean;
 }
+
+export type ValidateFileOptions<Url extends string> =
+  CheckAttachmentUrl<Url> extends { readonly error: string }
+  ? CheckAttachmentUrl<Url>
+  : CheckMaxLength<Url, 512, 'url'> extends { readonly error: string }
+  ? CheckMaxLength<Url, 512, 'url'>
+  : unknown;
 
 export interface FileBuilderInstance extends FileBuilderClass {}
 
@@ -74,13 +82,10 @@ constructor(opts: FileOptions) {
    *
    * @param url - The attachment URL (e.g. `attachment://report.pdf`).
    * @returns This builder for chaining.
-   * @throws If the URL does not use the `attachment://` scheme.
    *
    * @see {@link https://discord.com/developers/docs/reference#attachment-data Discord Docs - Attachment Data}
    */
-  setURL(url: string): this {
-    if (!url.startsWith('attachment://'))
-      throw new Error(`[File] url must use the attachment:// scheme (got "${url}")`);
+  setURL(url: CheckAttachmentUrl<string>): this {
     this.data.file = { url };
     return this;
   }
@@ -103,19 +108,20 @@ constructor(opts: FileOptions) {
    * @throws If no URL has been set.
    */
   override toJSON(): Record<string, unknown> {
-    if (!this.url) throw new Error('[File] toJSON() requires a file url');
-    const res: Record<string, unknown> = {
-      type: ComponentType.File,
-      file: { url: this.url },
-    };
-    if (this.id !== undefined) res.id = this.id;
-    if (this.data.spoiler !== undefined) res.spoiler = this.data.spoiler;
-    return res;
+    if (!this.data.file?.url) throw new Error('need file url to toJSON()');
+    if (this.id !== undefined) {
+      (this.data as Record<string, unknown>).id = this.id;
+    }
+    return this.data as Record<string, unknown>;
   }
 }
 
 export const FileBuilder = FileBuilderClass as unknown as {
-  new (opts: FileOptions): FileBuilderInstance;
+  new <Url extends string>(
+    opts: FileOptions & {
+      url: Url;
+    } & ValidateFileOptions<Url>,
+  ): FileBuilderInstance;
   from(data: APIFileComponent): FileBuilder;
 };
 

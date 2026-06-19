@@ -33,6 +33,7 @@ import {
   ComponentFactory,
   ComponentType,
   type APIButtonComponent,
+  type APIComponent,
 } from '../src/index.ts';
 
 // Tous les commentaires de ce fichier sont en français, sans espace avant la ponctuation double.
@@ -286,8 +287,8 @@ describe('Extra Coverage Tests', () => {
     expect(factory).toBeDefined();
 
     // tests pour pousser la couverture à fond sur les erreurs de la factory
-    expect(() => ComponentFactory.from(null as any)).toThrow('data is null or undefined');
-    expect(() => ComponentFactory.from({} as any)).toThrow('missing component type in the payload');
+    expect(() => ComponentFactory.from(null as unknown as APIComponent)).toThrow('data is null or undefined');
+    expect(() => ComponentFactory.from({} as unknown as APIComponent)).toThrow('missing component type in the payload');
     expect(() => ComponentFactory.from({ type: 9999 })).toThrow('unsupported component type: 9999');
   });
 
@@ -298,7 +299,7 @@ describe('Extra Coverage Tests', () => {
       public testMin(s: string, min: number, name: string) {
         this.validateMinLength(s, min, name);
       }
-      toJSON() { return {} as any; }
+      toJSON() { return {} as never; }
     }
     const t = new TestComp();
     // ça doit passer crème

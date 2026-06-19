@@ -25,7 +25,7 @@ export interface RadioGroupOptions<
   CustomId extends string = string,
   Options extends readonly RadioGroupOptionBuilder[] = readonly RadioGroupOptionBuilder[],
 > {
-  options: Options;
+  options: readonly [...Options];
   required?: boolean;
   customId?: CustomId;
   custom_id?: CustomId;
@@ -130,7 +130,7 @@ constructor(opts: RadioGroupOptionOptions<string, string, string>) {
    * @returns This builder instance
    * @throws If value is empty or exceeds 100 characters
    */
-  setValue(val: string): this {
+  setValue(val: CheckMinLength<string, 1, 'value'> & CheckMaxLength<string, 100, 'value'>): this {
     if (val.length < 1) {
       throw new Error('value needs to be at least 1 character');
     }
@@ -147,7 +147,7 @@ constructor(opts: RadioGroupOptionOptions<string, string, string>) {
    * @returns This builder instance
    * @throws If label exceeds 100 characters
    */
-  setLabel(lbl: string): this {
+  setLabel(lbl: CheckMaxLength<string, 100, 'label'>): this {
     if (lbl.length > 100) {
       throw new Error(`label is too long, max is 100 characters but got ${lbl.length}`);
     }
@@ -161,7 +161,7 @@ constructor(opts: RadioGroupOptionOptions<string, string, string>) {
    * @returns This builder instance
    * @throws If description exceeds 100 characters
    */
-  setDescription(desc: string): this {
+  setDescription(desc: CheckMaxLength<string, 100, 'description'>): this {
     if (desc.length > 100) {
       throw new Error(`description is too long, max is 100 characters but got ${desc.length}`);
     }
@@ -187,13 +187,7 @@ constructor(opts: RadioGroupOptionOptions<string, string, string>) {
   toJSON(): APIRadioGroupOption {
     if (!this.data.value) throw new Error('value is required');
     if (!this.data.label) throw new Error('label is required');
-    const res: APIRadioGroupOption = {
-      value: this.data.value,
-      label: this.data.label,
-    };
-    if (this.data.description !== undefined) res.description = this.data.description;
-    if (this.data.default !== undefined) res.default = this.data.default;
-    return res;
+    return this.data as APIRadioGroupOption;
   }
 }
 
@@ -312,7 +306,7 @@ constructor(opts: RadioGroupOptions<string, RadioGroupOptionBuilder[]>) {
    * @param cid - The unique custom identifier.
    * @returns This builder instance for chaining.
    */
-  setCustomId(cid: string): this {
+  setCustomId(cid: CheckMinLength<string, 1, 'customId'> & CheckMaxLength<string, 100, 'customId'>): this {
     this.validateCustomId(cid);
     this.data.custom_id = cid;
     return this;
@@ -387,20 +381,26 @@ constructor(opts: RadioGroupOptions<string, RadioGroupOptionBuilder[]>) {
    * @throws If options count is less than 2
    */
   override toJSON(): APIRadioGroupComponent {
-    if (!this.data.options || this.data.options.length < 2)
-      throw new Error('need at least 2 options to serialize (got ' + (this.data.options ? this.data.options.length : 0) + ')');
-    const rawOpts = this.data.options as unknown as readonly { toJSON(): APIRadioGroupOption }[];
-    const len = rawOpts.length;
+    const rawOpts = this.data.options;
+    const len = rawOpts ? rawOpts.length : 0;
+    if (len < 2)
+      throw new Error('need at least 2 options to serialize (got ' + len + ')');
     const serializedOpts = new Array<APIRadioGroupOption>(len);
-    for (let i = 0; i < len; i++) serializedOpts[i] = rawOpts[i]!.toJSON();
-    const res: APIRadioGroupComponent = {
-      type: ComponentType.RadioGroup,
-      custom_id: this.data.custom_id ?? '',
+    for (let i = 0; i < len; i++) {
+      const o = rawOpts![i];
+      if (o) {
+        serializedOpts[i] = 'toJSON' in o && typeof o.toJSON === 'function'
+          ? (o as { toJSON(): APIRadioGroupOption }).toJSON()
+          : (o as APIRadioGroupOption);
+      }
+    }
+    if (this.id !== undefined) {
+      (this.data as Record<string, unknown>).id = this.id;
+    }
+    return {
+      ...this.data,
       options: serializedOpts,
-    };
-    if (this.id !== undefined) res.id = this.id;
-    if (this.data.required !== undefined) res.required = this.data.required;
-    return res;
+    } as APIRadioGroupComponent;
   }
 }
 
@@ -412,7 +412,8 @@ type ExtractRadioGroupOptions<Opts> =
 export const RadioGroupBuilder = RadioGroupBuilderClass as unknown as {
   new <
     CustomId extends string = string,
-    Opts extends RadioGroupOptions<CustomId, any> = RadioGroupOptions<CustomId, any>,
+    Options extends readonly RadioGroupOptionBuilder[] = readonly RadioGroupOptionBuilder[],
+    Opts extends RadioGroupOptions<CustomId, Options> = RadioGroupOptions<CustomId, Options>,
   >(
     opts: Opts & ValidateRadioGroupOptions<Opts>,
   ): RadioGroupBuilderInstance<ExtractCustomId<Opts>, ExtractRadioGroupOptions<Opts>>;

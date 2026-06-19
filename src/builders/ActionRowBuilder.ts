@@ -128,21 +128,22 @@ class ActionRowBuilderClass<
    */
   override toJSON(): APIActionRowComponent<ReturnType<T['toJSON']>> {
     const comps = this.data.components;
-    if (!comps || comps.length === 0) {
+    const len = comps ? comps.length : 0;
+    if (len === 0) {
       throw new Error('need at least one component to serialize');
     }
-    const len = comps.length;
     const serialized = new Array(len);
     for (let i = 0; i < len; i++) {
-      const c = comps[i] as unknown as ActionRowComponent;
+      const c = comps![i] as unknown as ActionRowComponent;
       serialized[i] = c?.toJSON ? c.toJSON() : c;
     }
-    const res: APIActionRowComponent<ReturnType<T['toJSON']>> = {
-      type: ComponentType.ActionRow,
+    if (this.id !== undefined) {
+      (this.data as Record<string, unknown>).id = this.id;
+    }
+    return {
+      ...this.data,
       components: serialized,
-    };
-    if (this.id !== undefined) res.id = this.id;
-    return res;
+    } as APIActionRowComponent<ReturnType<T['toJSON']>>;
   }
 }
 

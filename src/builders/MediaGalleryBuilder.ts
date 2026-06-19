@@ -1,6 +1,6 @@
 import { ComponentType } from '../enums.ts';
 import type { APIMediaGalleryComponent, APIMediaGalleryItem } from '../types.ts';
-import type { CheckArrayLength } from '../utils/guards.ts';
+import type { CheckArrayLength, CheckMediaUrl, CheckMaxLength } from '../utils/guards.ts';
 import { BaseComponent, resolveRaw } from './base.ts';
 
 export interface MediaGalleryItemOptions {
@@ -11,6 +11,17 @@ export interface MediaGalleryItemOptions {
   /** Whether to blur the item behind a spoiler overlay. */
   spoiler?: boolean;
 }
+
+export type ValidateMediaGalleryItemOptions<Url extends string, Description extends string = string> =
+  CheckMediaUrl<Url> extends { readonly error: string }
+  ? CheckMediaUrl<Url>
+  : CheckMaxLength<Url, 512, 'url'> extends { readonly error: string }
+  ? CheckMaxLength<Url, 512, 'url'>
+  : [Description] extends [never]
+  ? unknown
+  : CheckMaxLength<Description, 1024, 'description'> extends { readonly error: string }
+  ? CheckMaxLength<Description, 1024, 'description'>
+  : unknown;
 
 /**
  * Represents a single item inside a {@link MediaGalleryBuilder}.
@@ -124,18 +135,23 @@ class MediaGalleryItemBuilderClass {
    * @throws If no URL has been set.
    */
   toJSON(): APIMediaGalleryItem {
-    if (!this.url) throw new Error('need a media url to serialize toJSON');
-    const res: APIMediaGalleryItem = { media: { url: this.url } };
-    if (this.data.description !== undefined) res.description = this.data.description;
-    if (this.data.spoiler !== undefined) res.spoiler = this.data.spoiler;
-    return res;
+    if (!this.data.media?.url) throw new Error('need a media url to serialize toJSON');
+    return this.data as APIMediaGalleryItem;
   }
 }
 
 export interface MediaGalleryItemBuilderInstance extends MediaGalleryItemBuilderClass { }
 
 export const MediaGalleryItemBuilder = MediaGalleryItemBuilderClass as unknown as {
-  new(opts: MediaGalleryItemOptions): MediaGalleryItemBuilderInstance;
+  new <
+    Url extends string,
+    Description extends string = string,
+  >(
+    opts: MediaGalleryItemOptions & {
+      url: Url;
+      description?: Description;
+    } & ValidateMediaGalleryItemOptions<Url, Description>,
+  ): MediaGalleryItemBuilderInstance;
   from(data: APIMediaGalleryItem): MediaGalleryItemBuilder;
 };
 export type MediaGalleryItemBuilder = MediaGalleryItemBuilderClass;
@@ -144,7 +160,7 @@ export interface MediaGalleryOptions<
   Items extends readonly MediaGalleryItemBuilder[] = MediaGalleryItemBuilder[],
 > {
   /** Gallery items to display (1–10 entries required). */
-  items: Items & CheckArrayLength<Items, 1, 10, 'items'>;
+  items: readonly [...Items] & CheckArrayLength<Items, 1, 10, 'items'>;
 }
 
 export interface MediaGalleryBuilderInstance<
@@ -256,18 +272,24 @@ class MediaGalleryBuilderClass extends BaseComponent<Partial<APIMediaGalleryComp
    */
   override toJSON(): APIMediaGalleryComponent {
     const raw = this.data.items;
-    if (!raw || raw.length === 0) throw new Error('need at least one item to serialize');
-    // manual loop without map prototype lookup overhead
-    const len = raw.length;
+    const len = raw ? raw.length : 0;
+    if (len === 0) throw new Error('need at least one item to serialize');
     const serialized = new Array<APIMediaGalleryItem>(len);
-    for (let i = 0; i < len; i++)
-      serialized[i] = (raw[i] as unknown as { toJSON(): APIMediaGalleryItem }).toJSON();
-    const res: APIMediaGalleryComponent = {
-      type: ComponentType.MediaGallery,
+    for (let i = 0; i < len; i++) {
+      const item = raw![i];
+      if (item) {
+        serialized[i] = 'toJSON' in item && typeof item.toJSON === 'function'
+          ? (item as { toJSON(): APIMediaGalleryItem }).toJSON()
+          : (item as APIMediaGalleryItem);
+      }
+    }
+    if (this.id !== undefined) {
+      (this.data as Record<string, unknown>).id = this.id;
+    }
+    return {
+      ...this.data,
       items: serialized,
-    };
-    if (this.id !== undefined) res.id = this.id;
-    return res;
+    } as APIMediaGalleryComponent;
   }
 }
 

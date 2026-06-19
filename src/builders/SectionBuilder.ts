@@ -174,23 +174,23 @@ class SectionBuilderClass extends BaseComponent<Partial<APISectionComponent>> {
    */
   override toJSON(): Record<string, unknown> {
     const comps = this.data.components;
-    if (!comps || comps.length === 0)
+    const len = comps ? comps.length : 0;
+    if (len === 0)
       throw new Error('need at least one TextDisplay component to serialize');
-    // manual loop, avoids prototype lookup overhead of .map
-    const len = comps.length;
     const serialized = new Array(len);
     for (let i = 0; i < len; i++) {
-      serialized[i] = (comps[i] as TextDisplayBuilder).toJSON();
+      serialized[i] = (comps![i] as TextDisplayBuilder).toJSON();
     }
-    const res: Record<string, unknown> = {
-      type: ComponentType.Section,
-      components: serialized,
-    };
-    if (this.id !== undefined) res.id = this.id;
     const acc = this.data.accessory as SectionAccessory | undefined;
-    if (acc !== undefined)
-      res.accessory = acc.toJSON();
-    return res;
+    const serializedAcc = acc ? acc.toJSON() : undefined;
+    if (this.id !== undefined) {
+      (this.data as Record<string, unknown>).id = this.id;
+    }
+    return {
+      ...this.data,
+      components: serialized,
+      ...(serializedAcc ? { accessory: serializedAcc } : {}),
+    } as Record<string, unknown>;
   }
 }
 
