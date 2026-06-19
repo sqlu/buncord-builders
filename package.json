@@ -44,10 +44,7 @@
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/sqlu/buncord-builders"
-  },
+  "repository": "https://github.com/sqlu/buncord-builders",
   "files": [
     "src"
   ]
