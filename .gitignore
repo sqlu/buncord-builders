@@ -8,3 +8,4 @@ scratch*
 *issues.json
 jsdoc_issues.json
 .npmrc
+.env
