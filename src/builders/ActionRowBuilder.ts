@@ -90,7 +90,14 @@ class ActionRowBuilderClass<
   }
 
   constructor(opts?: ActionRowOptions<T, Components>) {
-    const comps = opts?.components ?? [];
+    if (!opts) {
+      super({
+        type: ComponentType.ActionRow,
+        components: [],
+      });
+      return;
+    }
+    const comps = opts.components ?? [];
     const len = comps.length;
     if (len > 5) throw new Error("components size can't exceed 5");
     super({
@@ -152,15 +159,15 @@ class ActionRowBuilderClass<
     const serialized = new Array(len);
     for (let i = 0; i < len; i++) {
       const c = comps![i] as unknown as ActionRowComponent;
-      serialized[i] = c?.toJSON ? c.toJSON() : c;
-    }
-    if (this.id !== undefined) {
-      (this.data as Record<string, unknown>).id = this.id;
+      serialized[i] = (c && typeof (c as Record<string, unknown>).toJSON === 'function')
+        ? (c as { toJSON(): unknown }).toJSON()
+        : c;
     }
     return {
-      ...this.data,
+      type: ComponentType.ActionRow,
       components: serialized,
-    } as APIActionRowComponent<ReturnType<T['toJSON']>>;
+      id: this.id !== undefined ? this.id : this.data.id,
+    } as unknown as APIActionRowComponent<ReturnType<T['toJSON']>>;
   }
 }
 

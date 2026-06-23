@@ -82,15 +82,13 @@ export type ValidateTextInputOptions<Opts> =
   ? CheckStringConstraints<GetCustomIdField<Opts>, 1, 100, 'customId'>
   : Opts extends { customId: string; custom_id: string }
   ? { readonly error: 'Cannot specify both customId and custom_id' }
-  : Opts extends { customId: string } | { custom_id: string }
-  ? ([GetMinLength<Opts>] extends [never]
+  : ([GetMinLength<Opts>] extends [never]
       ? unknown
       : [GetMaxLength<Opts>] extends [never]
       ? unknown
       : IsLessThanOrEqual<GetMinLength<Opts> & number, GetMaxLength<Opts> & number> extends true
       ? unknown
-      : { readonly error: 'minLength cannot be greater than maxLength' })
-  : { readonly error: 'TextInput requires a customId or custom_id property' };
+      : { readonly error: 'minLength cannot be greater than maxLength' });
 
 /**
  * Interface for a fully configured TextInputBuilder.
@@ -215,56 +213,77 @@ class TextInputBuilderClass extends BaseComponent<Partial<APITextInputComponent>
     return this.data.required;
   }
 
-  private validateTextInputLengths(
-    minLen: number | undefined,
-    maxLen: number | undefined,
-    val: string | undefined,
-  ): void {
-    if (minLen !== undefined) this.validateRange(minLen, 0, 4000, 'minLength');
-    if (maxLen !== undefined) this.validateRange(maxLen, 1, 4000, 'maxLength');
-    if (minLen !== undefined && maxLen !== undefined && minLen > maxLen)
-      throw new Error(`min length can't be more than max length (you set min to ${minLen} and max to ${maxLen})`);
-    if (val !== undefined) {
-      if (val.length > 4000)
-        throw new Error(`value is too long, max is 4000 characters but got ${val.length}`);
-      if (minLen !== undefined && val.length < minLen)
-        throw new Error(`value is too short, need at least ${minLen} characters but only got ${val.length}`);
-      if (maxLen !== undefined && val.length > maxLen)
-        throw new Error(`value is too long, max is ${maxLen} characters but got ${val.length}`);
-    }
-  }
 
-      /**
+  /**
    * Creates a new TextInputBuilder.
    * @param opts - Config options.
    */
-constructor(opts: TextInputOptions<string, string, string, string>) {
-    super();
-    this.data.type = ComponentType.TextInput;
-
-    if (opts.label !== undefined) this.validateLength(opts.label, 45, 'label');
+  constructor(opts?: TextInputOptions<string, string, string, string>) {
+    if (!opts) {
+      super({
+        type: ComponentType.TextInput,
+        style: TextInputStyle.Short,
+      } as Partial<APITextInputComponent>);
+      return;
+    }
 
     const cid = opts.customId ?? opts.custom_id;
-    if (!cid) throw new Error('customId is required');
-    this.validateCustomId(cid);
-
     const minLen = opts.minLength ?? opts.min_length;
     const maxLen = opts.maxLength ?? opts.max_length;
-    this.validateTextInputLengths(minLen, maxLen, opts.value);
-    if (opts.placeholder !== undefined)
-      this.validateLength(opts.placeholder, 100, 'placeholder');
 
-    this.data.custom_id = cid;
-    this.data.style = opts.style ?? TextInputStyle.Short;
-    if (opts.label !== undefined) this.data.label = opts.label;
-    if (opts.placeholder !== undefined) this.data.placeholder = opts.placeholder;
-    if (opts.value !== undefined) this.data.value = opts.value;
-    if (minLen !== undefined) this.data.min_length = minLen;
-    if (maxLen !== undefined) this.data.max_length = maxLen;
-    if (opts.required !== undefined) this.data.required = opts.required;
+    if (opts.label !== undefined && opts.label.length > 45) {
+      throw new Error(`label is too long, max is 45 characters but got ${opts.label.length}`);
+    }
+    if (cid !== undefined) {
+      const len = cid.length;
+      if (len < 1) {
+        throw new Error(`customId is too short, need at least 1 character(s) but got 0`);
+      }
+      if (len > 100) {
+        throw new Error(`customId is too long, max is 100 characters but got ${len}`);
+      }
+    }
+    if (minLen !== undefined && (minLen < 0 || minLen > 4000)) {
+      throw new Error(`minLength must be between 0 and 4000, but you set it to ${minLen}`);
+    }
+    if (maxLen !== undefined && (maxLen < 1 || maxLen > 4000)) {
+      throw new Error(`maxLength must be between 1 and 4000, but you set it to ${maxLen}`);
+    }
+    if (minLen !== undefined && maxLen !== undefined && minLen > maxLen) {
+      throw new Error(`min length can't be more than max length (you set min to ${minLen} and max to ${maxLen})`);
+    }
+    const value = opts.value;
+    if (value !== undefined) {
+      if (value.length > 4000) {
+        throw new Error(`value is too long, max is 4000 characters but got ${value.length}`);
+      }
+      if (minLen !== undefined && value.length < minLen) {
+        throw new Error(`value is too short, need at least ${minLen} characters but only got ${value.length}`);
+      }
+      if (maxLen !== undefined && value.length > maxLen) {
+        throw new Error(`value is too long, max is ${maxLen} characters but got ${value.length}`);
+      }
+    }
+    if (opts.placeholder !== undefined && opts.placeholder.length > 100) {
+      throw new Error(`placeholder is too long, max is 100 characters but got ${opts.placeholder.length}`);
+    }
+
+    const payload: Partial<APITextInputComponent> = {
+      type: ComponentType.TextInput,
+      style: opts.style ?? TextInputStyle.Short,
+    };
+    if (opts.label !== undefined) payload.label = opts.label;
+    if (cid !== undefined) payload.custom_id = cid;
+    if (opts.placeholder !== undefined) payload.placeholder = opts.placeholder;
+    if (opts.value !== undefined) payload.value = opts.value;
+    if (minLen !== undefined) payload.min_length = minLen;
+    if (maxLen !== undefined) payload.max_length = maxLen;
+    if (opts.required !== undefined) payload.required = opts.required;
+
+    super(payload);
   }
 
-      /**
+  /**
    * Sets the custom ID (up to 100 chars).
    * @param cid - Unique custom ID.
    * @returns This builder for chaining.
@@ -403,7 +422,7 @@ export const TextInputBuilder = TextInputBuilderClass as unknown as {
     MaxLength extends number = number,
     Opts extends TextInputOptions<Label, CustomId, Placeholder, Value, MinLength, MaxLength> = TextInputOptions<Label, CustomId, Placeholder, Value, MinLength, MaxLength>,
   >(
-    opts: Opts & ValidateTextInputOptions<Opts>,
+    opts?: Opts & ValidateTextInputOptions<Opts>,
   ): TextInputBuilderInstance<ExtractCustomId<Opts>>;
   from(data: APITextInputComponent): TextInputBuilder;
 };

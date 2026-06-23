@@ -4,11 +4,12 @@ import type { APIComponent, JSONifiable } from '../types.ts';
 const AUDIT_TEXT_FIELDS = ['content', 'label', 'description', 'placeholder', 'value', 'title'] as const;
 
 function scanTreeLimits(c: unknown, state: { count: number; textLen: number }): void {
-  if (!c) return;
+  if (!c || typeof c !== 'object') return;
 
-  const payload = (typeof c === 'object' && c !== null && typeof (c as JSONifiable).toJSON === 'function')
-    ? (c as JSONifiable).toJSON() as Record<string, unknown>
-    : (c as Record<string, unknown>);
+  let payload = c as Record<string, unknown>;
+  if (typeof payload.toJSON === 'function') {
+    payload = payload.toJSON() as Record<string, unknown>;
+  }
 
   if (typeof payload.type === 'number') state.count++;
 
@@ -25,7 +26,7 @@ function scanTreeLimits(c: unknown, state: { count: number; textLen: number }): 
     for (let i = 0; i < len; i++) scanTreeLimits(comps[i], state);
   }
   const comp = payload.component;
-  if (comp != null && typeof comp === 'object') {
+  if (comp && typeof comp === 'object') {
     scanTreeLimits(comp, state);
   }
   const opts = payload.options;
@@ -39,15 +40,15 @@ function scanTreeLimits(c: unknown, state: { count: number; textLen: number }): 
     for (let i = 0; i < len; i++) scanTreeLimits(items[i], state);
   }
   const acc = payload.accessory;
-  if (acc != null && typeof acc === 'object') {
+  if (acc && typeof acc === 'object') {
     scanTreeLimits(acc, state);
   }
   const f = payload.file;
-  if (f != null && typeof f === 'object') {
+  if (f && typeof f === 'object') {
     scanTreeLimits(f, state);
   }
   const m = payload.media;
-  if (m != null && typeof m === 'object') {
+  if (m && typeof m === 'object') {
     scanTreeLimits(m, state);
   }
   const files = payload.files;
@@ -1044,7 +1045,7 @@ export abstract class BaseComponent<
 * @returns Resolved raw API payload.
 */
 export function resolveRaw(data: unknown): Record<string, unknown> {
-  if (data && typeof data === 'object' && 'toJSON' in data && typeof (data as { toJSON: unknown }).toJSON === 'function')
+  if (data && typeof (data as { toJSON?: unknown }).toJSON === 'function')
     return (data as { toJSON(): Record<string, unknown> }).toJSON();
   return data as Record<string, unknown>;
 }

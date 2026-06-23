@@ -143,17 +143,20 @@ class FileUploadBuilderClass extends BaseComponent<Partial<APIFileUploadComponen
   }
 
   /**
-* Creates a new FileUploadBuilder.
-* @param opts - Config options.
-*/
-  constructor(opts: FileUploadOptions<string>) {
+   * Creates a new FileUploadBuilder.
+   * @param opts - Config options.
+   */
+  constructor(opts?: FileUploadOptions<string>) {
     super();
     this.data.type = ComponentType.FileUpload;
 
+    if (!opts) return;
+
     const cid = opts.customId ?? opts.custom_id;
-    if (!cid) throw new Error('customId is required');
-    this.validateCustomId(cid);
-    this.data.custom_id = cid;
+    if (cid !== undefined) {
+      this.validateCustomId(cid);
+      this.data.custom_id = cid;
+    }
 
     const min = opts.minValues ?? opts.min_values;
     const max = opts.maxValues ?? opts.max_values;
@@ -165,10 +168,10 @@ class FileUploadBuilderClass extends BaseComponent<Partial<APIFileUploadComponen
   }
 
   /**
-* Sets the custom ID (up to 100 chars).
-* @param cid - Unique custom ID.
-* @returns This builder for chaining.
-*/
+   * Sets the custom ID (up to 100 chars).
+   * @param cid - Unique custom ID.
+   * @returns This builder for chaining.
+   */
   setCustomId(cid: CheckMinLength<string, 1, 'customId'> & CheckMaxLength<string, 100, 'customId'>): this {
     this.validateCustomId(cid);
     this.data.custom_id = cid;
@@ -259,9 +262,7 @@ export type ValidateFileUploadOptions<Opts> =
   ? CheckStringConstraints<GetCustomIdField<Opts>, 1, 100, 'customId'>
   : Opts extends { customId: string; custom_id: string }
   ? { readonly error: 'Cannot specify both customId and custom_id' }
-  : Opts extends { customId: string } | { custom_id: string }
-  ? ValidateFileUploadValues<Opts>
-  : { readonly error: 'FileUpload requires a customId or custom_id property' };
+  : ValidateFileUploadValues<Opts>;
 
 export const FileUploadBuilder = FileUploadBuilderClass as unknown as {
   new <
@@ -269,7 +270,7 @@ export const FileUploadBuilder = FileUploadBuilderClass as unknown as {
     MaxValues extends FileUploadRange = FileUploadRange,
     Opts extends BaseFileUploadOptions<MinValues, MaxValues> = BaseFileUploadOptions<MinValues, MaxValues>,
   >(
-    opts: Opts & ValidateFileUploadOptions<Opts> & ValidateSelectMenuRequired<Opts>,
+    opts?: Opts & ValidateFileUploadOptions<Opts> & ValidateSelectMenuRequired<Opts>,
   ): FileUploadBuilderInstance<ExtractCustomId<Opts>>;
   from(data: APIFileUploadComponent): FileUploadBuilder;
 };

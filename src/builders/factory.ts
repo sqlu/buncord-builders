@@ -53,6 +53,9 @@ const registry = {
  * Resolves component types and loads the right builder class.
  */
 export class ComponentFactory {
+  /** @internal */
+  constructor() {}
+
   /**
    * Creates a component builder from a raw API payload.
    * @param data Raw component data.

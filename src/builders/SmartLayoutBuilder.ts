@@ -54,6 +54,10 @@ const SELECT_TYPES = new Set<ComponentType>([
  */
 export class SmartLayoutBuilder {
   private readonly components: LayoutComponent[] = [];
+  private _pendingRow: LayoutComponent[] = [];
+  private _rows: ActionRowBuilder[] = [];
+
+  constructor() {}
 
   /**
    * Adds one or more buttons to the layout queue.
@@ -75,25 +79,25 @@ export class SmartLayoutBuilder {
     return this;
   }
 
+  private _flush(): void {
+    if (this._pendingRow.length > 0) {
+      this._rows.push(
+        new ActionRowBuilder({
+          components: this._pendingRow as unknown as ActionRowComponent[],
+        }),
+      );
+      this._pendingRow = [];
+    }
+  }
+
   /**
    * Organizes the added components into an array of ActionRowBuilders.
    * @returns The array of configured ActionRowBuilders
    * @throws If more than 5 ActionRows would be generated
    */
   build(): ActionRowBuilder[] {
-    const rows: ActionRowBuilder[] = [];
-    let currentRow: LayoutComponent[] = [];
-
-    const flush = () => {
-      if (currentRow.length > 0) {
-        rows.push(
-          new ActionRowBuilder({
-            components: currentRow as unknown as ActionRowComponent[],
-          }),
-        );
-        currentRow = [];
-      }
-    };
+    this._rows = [];
+    this._pendingRow = [];
 
     const total = this.components.length;
     for (let i = 0; i < total; i++) {
@@ -101,25 +105,25 @@ export class SmartLayoutBuilder {
       const isSelect = SELECT_TYPES.has((comp as { type: number }).type);
 
       if (isSelect) {
-        flush();
-        rows.push(
+        this._flush();
+        this._rows.push(
           new ActionRowBuilder({
             components: [comp] as unknown as ActionRowComponent[],
           }),
         );
       } else {
-        if (currentRow.length >= 5) flush();
-        currentRow.push(comp);
+        if (this._pendingRow.length >= 5) this._flush();
+        this._pendingRow.push(comp);
       }
     }
 
-    flush();
+    this._flush();
 
-    if (rows.length > 5)
+    if (this._rows.length > 5)
       throw new Error(
-        `too many action rows, got ${rows.length} but discord allows a maximum of 5`,
+        `too many action rows, got ${this._rows.length} but discord allows a maximum of 5`,
       );
 
-    return rows;
+    return this._rows;
   }
 }

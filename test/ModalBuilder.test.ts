@@ -62,13 +62,11 @@ describe('ModalBuilder', () => {
     ).toThrow('title is too long');
   });
 
-  it('throws if customId is missing', () => {
-    expect(() =>
-      new ModalBuilder({
-        title: 'Test',
-        components: [label],
-      } as never),
-    ).toThrow('customId is required');
+  it('can be created empty or with empty object', () => {
+    const modal1 = new ModalBuilder();
+    expect(modal1.toJSON).toBeDefined();
+    const modal2 = new ModalBuilder({});
+    expect(modal2.toJSON).toBeDefined();
   });
 
   it('throws if more than 5 components', () => {

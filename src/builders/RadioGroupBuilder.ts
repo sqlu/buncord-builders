@@ -22,9 +22,9 @@ export interface RadioGroupOptionOptions<
   Description extends string = string,
 > {
   /** The value returned when this option is selected (max 100 characters). */
-  value: Value & CheckMinLength<Value, 1, 'value'> & CheckMaxLength<Value, 100, 'value'>;
+  value?: Value & CheckMinLength<Value, 1, 'value'> & CheckMaxLength<Value, 100, 'value'>;
   /** The user-facing label text of the option (max 100 characters). */
-  label: Label & CheckMaxLength<Label, 100, 'label'>;
+  label?: Label & CheckMaxLength<Label, 100, 'label'>;
   /** An optional description displayed under the label (max 100 characters). */
   description?: Description & CheckMaxLength<Description, 100, 'description'>;
   /** Whether this radio choice starts selected by default. */
@@ -41,7 +41,7 @@ export interface RadioGroupOptions<
   Options extends readonly RadioGroupOptionBuilder[] = readonly RadioGroupOptionBuilder[],
 > {
   /** The list of radio choices (2-10 options allowed). */
-  options: readonly [...Options];
+  options?: readonly [...Options];
   /** Is selection required? Defaults to true. */
   required?: boolean;
   /** Custom ID sent on submit (up to 100 chars). */
@@ -59,15 +59,15 @@ type GetRadioOptions<Opts> = Opts extends { options: infer O } ? (O extends read
 export type ValidateRadioGroupOptions<Opts> =
   CheckStringConstraints<GetCustomIdField<Opts>, 1, 100, 'customId'> extends { readonly error: string }
   ? CheckStringConstraints<GetCustomIdField<Opts>, 1, 100, 'customId'>
-  : [GetRadioOptions<Opts>] extends [never]
-  ? { readonly error: 'RadioGroup requires an options property' }
-  : CheckArrayLength<GetRadioOptions<Opts>, 2, 10, 'options'> extends { readonly error: string }
-  ? CheckArrayLength<GetRadioOptions<Opts>, 2, 10, 'options'>
   : Opts extends { customId: string; custom_id: string }
   ? { readonly error: 'Cannot specify both customId and custom_id' }
-  : Opts extends { customId: string } | { custom_id: string }
-  ? unknown
-  : { readonly error: 'RadioGroup requires a customId or custom_id property' };
+  : Opts extends { options: unknown }
+  ? ([GetRadioOptions<Opts>] extends [never]
+      ? { readonly error: 'options must be a valid array' }
+      : CheckArrayLength<GetRadioOptions<Opts>, 2, 10, 'options'> extends { readonly error: string }
+      ? CheckArrayLength<GetRadioOptions<Opts>, 2, 10, 'options'>
+      : unknown)
+  : unknown;
 
 /**
  * Represents an option within a Radio Group component.
@@ -123,11 +123,12 @@ class RadioGroupOptionBuilderClass {
     return this.data.default;
   }
 
-      /**
+  /**
    * Creates a new RadioGroupOptionBuilder.
    * @param opts - Config options.
    */
-constructor(opts: RadioGroupOptionOptions<string, string, string>) {
+  constructor(opts?: RadioGroupOptionOptions<string, string, string>) {
+    if (!opts) return;
     const val = opts.value as string | undefined;
     if (val !== undefined) {
       if (val.length < 1) throw new Error('value needs to be at least 1 character');
@@ -223,11 +224,11 @@ export interface RadioGroupOptionBuilderInstance
 export const RadioGroupOptionBuilder =
   RadioGroupOptionBuilderClass as unknown as {
     new <
-      Value extends string,
-      Label extends string,
+      Value extends string = string,
+      Label extends string = string,
       Description extends string = string,
     >(
-      opts: RadioGroupOptionOptions<Value, Label, Description>,
+      opts?: RadioGroupOptionOptions<Value, Label, Description>,
     ): RadioGroupOptionBuilderInstance;
     from(data: APIRadioGroupOption): RadioGroupOptionBuilder;
   };
@@ -318,23 +319,38 @@ class RadioGroupBuilderClass extends BaseComponent<Partial<APIRadioGroupComponen
     return (this.data.options ?? []) as unknown as readonly RadioGroupOptionBuilder[];
   }
 
-      /**
+  /**
    * Creates a new RadioGroupBuilder.
    * @param opts - Config options.
    */
-constructor(opts: RadioGroupOptions<string, RadioGroupOptionBuilder[]>) {
-    super();
-    this.data.type = ComponentType.RadioGroup;
-    this.data.options = [];
+  constructor(opts?: RadioGroupOptions<string, RadioGroupOptionBuilder[]>) {
+    if (!opts) {
+      super({
+        type: ComponentType.RadioGroup,
+        options: [],
+      } as unknown as Partial<APIRadioGroupComponent>);
+      return;
+    }
 
     const cid = opts.customId ?? opts.custom_id;
-    if (!cid) throw new Error('customId is required');
-    this.validateCustomId(cid);
-    this.data.custom_id = cid;
+    const options = opts.options;
 
-    if (opts.options !== undefined)
-      this.setOptions(opts.options as RadioGroupOptionBuilder[]);
-    if (opts.required !== undefined) this.setRequired(opts.required);
+    const payload = {
+      type: ComponentType.RadioGroup,
+      custom_id: cid,
+      options: (options ?? []) as unknown as APIRadioGroupOption[],
+      required: opts.required,
+    } as unknown as Partial<APIRadioGroupComponent>;
+
+    super(payload);
+
+    if (cid !== undefined) {
+      this.validateCustomId(cid);
+    }
+
+    if (options !== undefined) {
+      this.validateArrayLength(options, 2, 10, 'options');
+    }
   }
 
       /**
@@ -421,22 +437,34 @@ constructor(opts: RadioGroupOptions<string, RadioGroupOptionBuilder[]>) {
     const len = rawOpts ? rawOpts.length : 0;
     if (len < 2)
       throw new Error('need at least 2 options to serialize (got ' + len + ')');
-    const serializedOpts = new Array<APIRadioGroupOption>(len);
-    for (let i = 0; i < len; i++) {
-      const o = rawOpts![i];
-      if (o) {
-        serializedOpts[i] = 'toJSON' in o && typeof o.toJSON === 'function'
-          ? (o as { toJSON(): APIRadioGroupOption }).toJSON()
-          : (o as APIRadioGroupOption);
+    let serializedOpts = rawOpts as unknown as APIRadioGroupOption[];
+    if (rawOpts) {
+      let hasBuilder = false;
+      for (let i = 0; i < len; i++) {
+        const o = rawOpts[i];
+        if (o && typeof (o as unknown as Record<string, unknown>).toJSON === 'function') {
+          hasBuilder = true;
+          break;
+        }
+      }
+      if (hasBuilder) {
+        serializedOpts = new Array<APIRadioGroupOption>(len);
+        for (let i = 0; i < len; i++) {
+          const o = rawOpts[i]!;
+          serializedOpts[i] = typeof (o as unknown as Record<string, unknown>).toJSON === 'function'
+            ? (o as unknown as { toJSON(): APIRadioGroupOption }).toJSON()
+            : (o as APIRadioGroupOption);
+        }
       }
     }
-    if (this.id !== undefined) {
-      (this.data as Record<string, unknown>).id = this.id;
-    }
+    const data = this.data;
     return {
-      ...this.data,
+      type: ComponentType.RadioGroup,
+      custom_id: data.custom_id,
       options: serializedOpts,
-    } as APIRadioGroupComponent;
+      required: data.required,
+      id: this.id !== undefined ? this.id : data.id,
+    } as unknown as APIRadioGroupComponent;
   }
 }
 
@@ -451,7 +479,7 @@ export const RadioGroupBuilder = RadioGroupBuilderClass as unknown as {
     Options extends readonly RadioGroupOptionBuilder[] = readonly RadioGroupOptionBuilder[],
     Opts extends RadioGroupOptions<CustomId, Options> = RadioGroupOptions<CustomId, Options>,
   >(
-    opts: Opts & ValidateRadioGroupOptions<Opts>,
+    opts?: Opts & ValidateRadioGroupOptions<Opts>,
   ): RadioGroupBuilderInstance<ExtractCustomId<Opts>, ExtractRadioGroupOptions<Opts>>;
   from(data: APIRadioGroupComponent): RadioGroupBuilder;
 };

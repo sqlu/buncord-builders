@@ -19,13 +19,28 @@ describe('ButtonBuilder', () => {
       expect(json.label).toBe('Confirm');
     });
 
-    it('throws if customId is missing on regular button', () => {
-      expect(() =>
-        new ButtonBuilder({
-          style: ButtonStyle.Primary,
-          label: 'Click',
-        } as never),
-      ).toThrow('customId');
+    it('can be created empty and configured with setters', () => {
+      const btn = new ButtonBuilder()
+        .setCustomId('confirm')
+        .setStyle(ButtonStyle.Primary)
+        .setLabel('Confirm');
+      const json = btn.toJSON();
+      expect(json.type).toBe(2);
+      expect(json.custom_id).toBe('confirm');
+      expect(json.style).toBe(ButtonStyle.Primary);
+      expect(json.label).toBe('Confirm');
+    });
+
+    it('can be created with empty object and configured with setters', () => {
+      const btn = new ButtonBuilder({})
+        .setCustomId('confirm')
+        .setStyle(ButtonStyle.Primary)
+        .setLabel('Confirm');
+      const json = btn.toJSON();
+      expect(json.type).toBe(2);
+      expect(json.custom_id).toBe('confirm');
+      expect(json.style).toBe(ButtonStyle.Primary);
+      expect(json.label).toBe('Confirm');
     });
 
     it('throws if label exceeds 80 chars', () => {
@@ -45,15 +60,6 @@ describe('ButtonBuilder', () => {
         emoji: { name: '🔥' },
       });
       expect(btn.toJSON().emoji).toEqual({ name: '🔥' });
-    });
-
-    it('throws if regular button has no label or emoji', () => {
-      expect(() =>
-        new ButtonBuilder({
-          customId: 'x',
-          style: ButtonStyle.Primary,
-        } as never),
-      ).toThrow('label or emoji');
     });
 
     it('setDisabled works', () => {
@@ -89,14 +95,7 @@ describe('ButtonBuilder', () => {
       expect(json.custom_id).toBeUndefined();
     });
 
-    it('throws if url is missing on link button', () => {
-      expect(() =>
-        new ButtonBuilder({
-          style: ButtonStyle.Link,
-          label: 'Open',
-        } as never),
-      ).toThrow('requires a url');
-    });
+
 
     it('throws if url is not http/https/discord', () => {
       expect(() =>
@@ -109,14 +108,7 @@ describe('ButtonBuilder', () => {
       ).toThrow('http, https, or discord');
     });
 
-    it('throws if link button has no label or emoji', () => {
-      expect(() =>
-        new ButtonBuilder({
-          style: ButtonStyle.Link,
-          url: 'https://example.com',
-        } as never),
-      ).toThrow('label or emoji');
-    });
+
   });
 
   describe('Premium button', () => {
@@ -128,11 +120,7 @@ describe('ButtonBuilder', () => {
       expect(btn.toJSON().sku_id).toBe('1234567890');
     });
 
-    it('throws if skuId is missing on premium button', () => {
-      expect(() =>
-        new ButtonBuilder({ style: ButtonStyle.Premium } as never),
-      ).toThrow('skuId');
-    });
+
   });
 
   it('verifies getters, aliases and from() resolver', () => {

@@ -8,7 +8,7 @@ import { BaseComponent, resolveRaw } from './base.ts';
  */
 export interface MediaGalleryItemOptions {
   /** Media URL - `http://`, `https://`, or `attachment://` scheme. */
-  url: string;
+  url?: string;
   /** Alt description text (up to 1024 chars). */
   description?: string;
   /** Whether to blur the item behind a spoiler overlay. */
@@ -21,7 +21,13 @@ export interface MediaGalleryItemOptions {
  * @template Description The description string literal.
  */
 export type ValidateMediaGalleryItemOptions<Url extends string, Description extends string = string> =
-  CheckMediaUrl<Url> extends { readonly error: string }
+  [Url] extends [never]
+  ? ([Description] extends [never]
+      ? unknown
+      : CheckMaxLength<Description, 1024, 'description'> extends { readonly error: string }
+      ? CheckMaxLength<Description, 1024, 'description'>
+      : unknown)
+  : CheckMediaUrl<Url> extends { readonly error: string }
   ? CheckMediaUrl<Url>
   : CheckMaxLength<Url, 512, 'url'> extends { readonly error: string }
   ? CheckMaxLength<Url, 512, 'url'>
@@ -79,10 +85,11 @@ class MediaGalleryItemBuilderClass {
   }
 
   /**
-* Creates a new MediaGalleryItemBuilder.
-* @param opts - Config options.
-*/
-  constructor(opts: MediaGalleryItemOptions) {
+   * Creates a new MediaGalleryItemBuilder.
+   * @param opts - Config options.
+   */
+  constructor(opts?: MediaGalleryItemOptions) {
+    if (!opts) return;
     if (opts.url !== undefined) this.setURL(opts.url);
     if (opts.description !== undefined) this.setDescription(opts.description);
     if (opts.spoiler !== undefined) this.setSpoiler(opts.spoiler);
@@ -155,11 +162,11 @@ export interface MediaGalleryItemBuilderInstance extends MediaGalleryItemBuilder
 
 export const MediaGalleryItemBuilder = MediaGalleryItemBuilderClass as unknown as {
   new <
-    Url extends string,
+    Url extends string = string,
     Description extends string = string,
   >(
-    opts: MediaGalleryItemOptions & {
-      url: Url;
+    opts?: MediaGalleryItemOptions & {
+      url?: Url;
       description?: Description;
     } & ValidateMediaGalleryItemOptions<Url, Description>,
   ): MediaGalleryItemBuilderInstance;
@@ -178,7 +185,7 @@ export interface MediaGalleryOptions<
   Items extends readonly MediaGalleryItemBuilder[] = MediaGalleryItemBuilder[],
 > {
   /** Gallery items to display (1–10 entries required). */
-  items: readonly [...Items] & CheckArrayLength<Items, 1, 10, 'items'>;
+  items?: readonly [...Items] & CheckArrayLength<Items, 1, 10, 'items'>;
 }
 
 /**
@@ -237,20 +244,27 @@ class MediaGalleryBuilderClass extends BaseComponent<Partial<APIMediaGalleryComp
   }
 
   /**
-* Creates a new MediaGalleryBuilder.
-* @param opts - Config options.
-*/
-  constructor(opts: MediaGalleryOptions<MediaGalleryItemBuilderClass[]>) {
-    super();
-    this.data.type = ComponentType.MediaGallery;
+   * Creates a new MediaGalleryBuilder.
+   * @param opts - Config options.
+   */
+  constructor(opts?: MediaGalleryOptions<MediaGalleryItemBuilderClass[]>) {
+    if (!opts) {
+      super({
+        type: ComponentType.MediaGallery,
+        items: [],
+      } as unknown as Partial<APIMediaGalleryComponent>);
+      return;
+    }
     const items = opts.items;
-    if (!items || items.length === 0) {
-      this.data.items = [];
-    } else {
+    if (items !== undefined) {
       const len = items.length;
       if (len > 10) throw new Error("items size can't be more than 10");
-      this.data.items = items as unknown as APIMediaGalleryItem[];
     }
+    const payload = {
+      type: ComponentType.MediaGallery,
+      items: (items ?? []) as unknown as APIMediaGalleryItem[],
+    } as unknown as Partial<APIMediaGalleryComponent>;
+    super(payload);
   }
 
   /**
@@ -297,22 +311,32 @@ class MediaGalleryBuilderClass extends BaseComponent<Partial<APIMediaGalleryComp
     const raw = this.data.items;
     const len = raw ? raw.length : 0;
     if (len === 0) throw new Error('need at least one item to serialize');
-    const serialized = new Array<APIMediaGalleryItem>(len);
-    for (let i = 0; i < len; i++) {
-      const item = raw![i];
-      if (item) {
-        serialized[i] = 'toJSON' in item && typeof item.toJSON === 'function'
-          ? (item as { toJSON(): APIMediaGalleryItem }).toJSON()
-          : (item as APIMediaGalleryItem);
+    let serialized = raw as unknown as APIMediaGalleryItem[];
+    if (raw) {
+      let hasBuilder = false;
+      for (let i = 0; i < len; i++) {
+        const item = raw[i];
+        if (item && typeof (item as unknown as Record<string, unknown>).toJSON === 'function') {
+          hasBuilder = true;
+          break;
+        }
+      }
+      if (hasBuilder) {
+        serialized = new Array<APIMediaGalleryItem>(len);
+        for (let i = 0; i < len; i++) {
+          const item = raw[i]!;
+          serialized[i] = typeof (item as unknown as Record<string, unknown>).toJSON === 'function'
+            ? (item as unknown as { toJSON(): APIMediaGalleryItem }).toJSON()
+            : (item as APIMediaGalleryItem);
+        }
       }
     }
-    if (this.id !== undefined) {
-      (this.data as Record<string, unknown>).id = this.id;
-    }
+    const data = this.data;
     return {
-      ...this.data,
+      type: ComponentType.MediaGallery,
       items: serialized,
-    } as APIMediaGalleryComponent;
+      id: this.id !== undefined ? this.id : data.id,
+    } as unknown as APIMediaGalleryComponent;
   }
 }
 
@@ -321,7 +345,7 @@ export const MediaGalleryBuilder = MediaGalleryBuilderClass as unknown as {
     ItemType extends MediaGalleryItemBuilder = MediaGalleryItemBuilder,
     Items extends readonly ItemType[] = readonly ItemType[],
   >(
-    opts: MediaGalleryOptions<Items>,
+    opts?: MediaGalleryOptions<Items>,
   ): MediaGalleryBuilderInstance<Items>;
   from(data: APIMediaGalleryComponent): MediaGalleryBuilder;
 };

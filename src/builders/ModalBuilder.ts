@@ -30,7 +30,7 @@ export interface ModalOptions<
   Components extends readonly ModalComponent[] = ModalComponent[],
 > {
   /** The title of the modal popup (1-45 characters). */
-  title: Title;
+  title?: Title;
   /** The list of input fields/components inside the modal (1-5 components allowed). */
   components?: Components;
   /** Custom ID sent on submit (up to 100 chars). */
@@ -51,15 +51,13 @@ export type ValidateModalOptions<Opts> =
   ? CheckStringConstraints<GetTitle<Opts>, 1, 45, 'Title'>
   : CheckStringConstraints<GetCustomIdField<Opts>, 1, 100, 'customId'> extends { readonly error: string }
   ? CheckStringConstraints<GetCustomIdField<Opts>, 1, 100, 'customId'>
+  : Opts extends { customId: string; custom_id: string }
+  ? { readonly error: 'Cannot specify both customId and custom_id' }
   : [GetComponents<Opts>] extends [never]
   ? unknown
   : CheckArrayLength<GetComponents<Opts>, 1, 5, 'components'> extends { readonly error: string }
   ? CheckArrayLength<GetComponents<Opts>, 1, 5, 'components'>
-  : Opts extends { customId: string; custom_id: string }
-  ? { readonly error: 'Cannot specify both customId and custom_id' }
-  : Opts extends { customId: string } | { custom_id: string }
-  ? unknown
-  : { readonly error: 'Modal requires a customId or custom_id property' };
+  : unknown;
 
 /**
  * Interface for a fully configured ModalBuilder.
@@ -160,21 +158,29 @@ class ModalBuilderClass<
    * Creates a new ModalBuilder.
    * @param opts - Config options.
    */
-  constructor(opts: ModalOptions<string, CustomId, Components>) {
-    if (!opts.title) throw new Error('title is required');
-    if (opts.title.length > 45) {
-      throw new Error(`title is too long, max is 45 characters but got ${opts.title.length}`);
+  constructor(opts?: ModalOptions<string, CustomId, Components>) {
+    this.data.components = [];
+
+    if (!opts) return;
+
+    if (opts.title !== undefined) {
+      if (opts.title.length < 1) throw new Error('title is required');
+      if (opts.title.length > 45) {
+        throw new Error(`title is too long, max is 45 characters but got ${opts.title.length}`);
+      }
+      this.data.title = opts.title;
     }
 
     const cid = opts.customId ?? opts.custom_id;
-    if (!cid) throw new Error('customId is required');
-    if (cid.length > 100) {
-      throw new Error(`customId is too long, max is 100 characters but got ${cid.length}`);
+    if (cid !== undefined) {
+      if (cid.length < 1) {
+        throw new Error('customId needs to be at least 1 character');
+      }
+      if (cid.length > 100) {
+        throw new Error(`customId is too long, max is 100 characters but got ${cid.length}`);
+      }
+      this.data.custom_id = cid;
     }
-
-    this.data.title = opts.title;
-    this.data.custom_id = cid;
-    this.data.components = [];
 
     if (opts.components !== undefined)
       this.setComponents(opts.components as unknown as ModalComponent[]);
@@ -194,7 +200,7 @@ class ModalBuilderClass<
     return this;
   }
 
-      /**
+  /**
    * Sets the custom ID (up to 100 chars).
    * @param cid - Unique custom ID.
    * @returns This builder for chaining.
@@ -359,7 +365,7 @@ class ModalBuilderClass<
     return ModalBuilderClass.from(this.toJSON()) as unknown as this;
   }
 
-      /**
+  /**
    * Serializes the ModalBuilder builder into a raw Discord API payload structure.
    * @returns The serialized JSON payload structure.
    */
@@ -373,10 +379,11 @@ class ModalBuilderClass<
     for (let i = 0; i < len; i++) {
       serializedComps[i] = comps![i]!.toJSON() as APIModalComponent;
     }
-    const payload = {
-      ...this.data,
+    const payload: APIModalStructure = {
+      title: this.data.title!,
+      custom_id: this.data.custom_id!,
       components: serializedComps,
-    } as APIModalStructure;
+    };
     BaseComponent.validateTreeLimits(payload);
     return payload;
   }
@@ -393,7 +400,7 @@ export const ModalBuilder = ModalBuilderClass as unknown as {
     CustomId extends string = string,
     Opts extends ModalOptions<Title, CustomId, readonly ModalComponent[]> = ModalOptions<Title, CustomId, readonly ModalComponent[]>,
   >(
-    opts: Opts & ValidateModalOptions<Opts>,
+    opts?: Opts & ValidateModalOptions<Opts>,
   ): ModalBuilderInstance<ExtractCustomId<Opts>, ExtractComponents<Opts>>;
   from(data: APIModalStructure): ModalBuilder;
 };

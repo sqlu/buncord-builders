@@ -25,11 +25,11 @@ export interface CheckboxGroupOptionOptions<
   /**
    * The value returned when this option is selected (maximum of 100 characters).
    */
-  value: Value & CheckMinLength<Value, 1, 'value'> & CheckMaxLength<Value, 100, 'value'>;
+  value?: Value & CheckMinLength<Value, 1, 'value'> & CheckMaxLength<Value, 100, 'value'>;
   /**
    * The label displayed for this option (maximum of 100 characters).
    */
-  label: Label & CheckMaxLength<Label, 100, 'label'>;
+  label?: Label & CheckMaxLength<Label, 100, 'label'>;
   /**
    * An optional description displayed below the label (maximum of 100 characters).
    */
@@ -54,7 +54,7 @@ export interface CheckboxGroupOptions<
   MaxValues extends number = number,
 > {
   /** The list of checkbox options (2-10 options allowed). */
-  options: readonly [...Options];
+  options?: readonly [...Options];
   /** The minimum number of checked options required (0-10). */
   minValues?: MinValues;
   /** Alias for minValues. */
@@ -80,14 +80,14 @@ type GetOptions<Opts> = Opts extends { options: infer O } ? (O extends readonly 
 export type ValidateCheckboxGroupOptions<Opts> =
   CheckStringConstraints<GetCustomIdField<Opts>, 1, 100, 'customId'> extends { readonly error: string }
   ? CheckStringConstraints<GetCustomIdField<Opts>, 1, 100, 'customId'>
-  : [GetOptions<Opts>] extends [never]
-  ? { readonly error: 'CheckboxGroup requires an options property' }
-  : CheckArrayLength<GetOptions<Opts>, 2, 10, 'options'> extends { readonly error: string }
-  ? CheckArrayLength<GetOptions<Opts>, 2, 10, 'options'>
   : Opts extends { customId: string; custom_id: string }
   ? { readonly error: 'Cannot specify both customId and custom_id' }
-  : Opts extends { customId: string } | { custom_id: string }
-  ? (Opts extends { minValues: number; maxValues: number }
+  : Opts extends { options: unknown }
+  ? ([GetOptions<Opts>] extends [never]
+      ? { readonly error: 'options must be a valid array' }
+      : CheckArrayLength<GetOptions<Opts>, 2, 10, 'options'> extends { readonly error: string }
+      ? CheckArrayLength<GetOptions<Opts>, 2, 10, 'options'>
+      : Opts extends { minValues: number; maxValues: number }
       ? (IsLessThanOrEqual<Opts['minValues'], Opts['maxValues']> extends true
           ? unknown
           : { readonly error: 'minValues cannot be greater than maxValues' })
@@ -96,7 +96,15 @@ export type ValidateCheckboxGroupOptions<Opts> =
           ? unknown
           : { readonly error: 'minValues cannot be greater than maxValues' })
       : unknown)
-  : { readonly error: 'CheckboxGroup requires a customId or custom_id property' };
+  : Opts extends { minValues: number; maxValues: number }
+  ? (IsLessThanOrEqual<Opts['minValues'], Opts['maxValues']> extends true
+      ? unknown
+      : { readonly error: 'minValues cannot be greater than maxValues' })
+  : Opts extends { min_values: number; max_values: number }
+  ? (IsLessThanOrEqual<Opts['min_values'], Opts['max_values']> extends true
+      ? unknown
+      : { readonly error: 'minValues cannot be greater than maxValues' })
+  : unknown;
 
 
 
@@ -154,11 +162,12 @@ class CheckboxGroupOptionBuilderClass {
     return this.data.default;
   }
 
-      /**
+  /**
    * Creates a new CheckboxGroupOptionBuilder.
    * @param opts - Config options.
    */
-constructor(opts: CheckboxGroupOptionOptions<string, string, string>) {
+  constructor(opts?: CheckboxGroupOptionOptions<string, string, string>) {
+    if (!opts) return;
     const val = opts.value as string | undefined;
     if (val !== undefined) {
       if (val.length < 1) throw new Error('value needs to be at least 1 character');
@@ -254,11 +263,11 @@ export interface CheckboxGroupOptionBuilderInstance
 export const CheckboxGroupOptionBuilder =
   CheckboxGroupOptionBuilderClass as unknown as {
     new <
-      Value extends string,
-      Label extends string,
+      Value extends string = string,
+      Label extends string = string,
       Description extends string = string,
     >(
-      opts: CheckboxGroupOptionOptions<Value, Label, Description>,
+      opts?: CheckboxGroupOptionOptions<Value, Label, Description>,
     ): CheckboxGroupOptionBuilderInstance;
     from(data: APICheckboxGroupOption): CheckboxGroupOptionBuilder;
   };
@@ -382,30 +391,44 @@ class CheckboxGroupBuilderClass extends BaseComponent<Partial<APICheckboxGroupCo
     }
   }
 
-      /**
+  /**
    * Creates a new CheckboxGroupBuilder.
    * @param opts - Config options.
    */
-constructor(opts: CheckboxGroupOptions<string, CheckboxGroupOptionBuilder[]>) {
-    super();
-    this.data.type = ComponentType.CheckboxGroup;
-    this.data.options = [];
+  constructor(opts?: CheckboxGroupOptions<string, CheckboxGroupOptionBuilder[]>) {
+    if (!opts) {
+      super({
+        type: ComponentType.CheckboxGroup,
+        options: [],
+      } as unknown as Partial<APICheckboxGroupComponent>);
+      return;
+    }
 
     const cid = opts.customId ?? opts.custom_id;
-    if (!cid) throw new Error('customId is required');
-    this.validateCustomId(cid);
-    this.data.custom_id = cid;
-
-    if (opts.options !== undefined)
-      this.setOptions(opts.options as CheckboxGroupOptionBuilder[]);
-
+    const options = opts.options;
     const min = opts.minValues ?? opts.min_values;
     const max = opts.maxValues ?? opts.max_values;
-    this.validateCheckboxGroupValues(min, max, opts.required);
 
-    if (opts.required !== undefined) this.setRequired(opts.required);
-    if (min !== undefined) this.setMinValues(min);
-    if (max !== undefined) this.setMaxValues(max);
+    const payload = {
+      type: ComponentType.CheckboxGroup,
+      custom_id: cid,
+      options: (options ?? []) as unknown as APICheckboxGroupOption[],
+      min_values: min,
+      max_values: max,
+      required: opts.required,
+    } as unknown as Partial<APICheckboxGroupComponent>;
+
+    super(payload);
+
+    if (cid !== undefined) {
+      this.validateCustomId(cid);
+    }
+
+    if (options !== undefined) {
+      this.validateArrayLength(options, 2, 10, 'options');
+    }
+
+    this.validateCheckboxGroupValues(min, max, opts.required);
   }
 
       /**
@@ -515,22 +538,36 @@ constructor(opts: CheckboxGroupOptions<string, CheckboxGroupOptionBuilder[]>) {
   override toJSON(): APICheckboxGroupComponent {
     const rawOpts = this.data.options;
     const len = rawOpts ? rawOpts.length : 0;
-    const serializedOpts = new Array<APICheckboxGroupOption>(len);
-    for (let i = 0; i < len; i++) {
-      const o = rawOpts![i];
-      if (o) {
-        serializedOpts[i] = 'toJSON' in o && typeof o.toJSON === 'function'
-          ? (o as { toJSON(): APICheckboxGroupOption }).toJSON()
-          : (o as APICheckboxGroupOption);
+    let serializedOpts = rawOpts as unknown as APICheckboxGroupOption[];
+    if (rawOpts) {
+      let hasBuilder = false;
+      for (let i = 0; i < len; i++) {
+        const o = rawOpts[i];
+        if (o && typeof (o as unknown as Record<string, unknown>).toJSON === 'function') {
+          hasBuilder = true;
+          break;
+        }
+      }
+      if (hasBuilder) {
+        serializedOpts = new Array<APICheckboxGroupOption>(len);
+        for (let i = 0; i < len; i++) {
+          const o = rawOpts[i]!;
+          serializedOpts[i] = typeof (o as unknown as Record<string, unknown>).toJSON === 'function'
+            ? (o as unknown as { toJSON(): APICheckboxGroupOption }).toJSON()
+            : (o as APICheckboxGroupOption);
+        }
       }
     }
-    if (this.id !== undefined) {
-      (this.data as Record<string, unknown>).id = this.id;
-    }
+    const data = this.data;
     return {
-      ...this.data,
+      type: ComponentType.CheckboxGroup,
+      custom_id: data.custom_id,
       options: serializedOpts,
-    } as APICheckboxGroupComponent;
+      min_values: data.min_values,
+      max_values: data.max_values,
+      required: data.required,
+      id: this.id !== undefined ? this.id : data.id,
+    } as unknown as APICheckboxGroupComponent;
   }
 }
 
@@ -547,7 +584,7 @@ export const CheckboxGroupBuilder = CheckboxGroupBuilderClass as unknown as {
     MaxValues extends number = number,
     Opts extends CheckboxGroupOptions<CustomId, Options, MinValues, MaxValues> = CheckboxGroupOptions<CustomId, Options, MinValues, MaxValues>,
   >(
-    opts: Opts & ValidateCheckboxGroupOptions<Opts> & ValidateSelectMenuRequired<Opts>,
+    opts?: Opts & ValidateCheckboxGroupOptions<Opts> & ValidateSelectMenuRequired<Opts>,
   ): CheckboxGroupBuilderInstance<ExtractCustomId<Opts>, ExtractCheckboxGroupOptions<Opts>>;
   from(data: APICheckboxGroupComponent): CheckboxGroupBuilder;
 };

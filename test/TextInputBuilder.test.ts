@@ -46,10 +46,16 @@ describe('TextInputBuilder', () => {
     expect(json.max_length).toBe(500);
   });
 
-  it('throws if customId is missing', () => {
-    expect(() =>
-      new TextInputBuilder({ label: 'Test' } as never),
-    ).toThrow('customId is required');
+  it('allows construction without any arguments', () => {
+    const input = new TextInputBuilder();
+    expect(input.customId).toBeUndefined();
+    input.setCustomId('later');
+    expect(input.customId).toBe('later');
+  });
+
+  it('allows construction with empty object', () => {
+    const input = new TextInputBuilder({});
+    expect(input.customId).toBeUndefined();
   });
 
   it('throws if label exceeds 45 chars at runtime', () => {

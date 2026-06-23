@@ -19,7 +19,7 @@ export interface SectionOptions<
   Components extends readonly TextDisplayBuilder[] = TextDisplayBuilder[],
 > {
   /** The child text displays grouped inside the section. */
-  components: Components & CheckArrayLength<Components, 1, 3, 'components'>;
+  components?: Components & CheckArrayLength<Components, 1, 3, 'components'>;
   /** An optional accessory displayed on the right side of the section. */
   accessory?: SectionAccessory;
 }
@@ -90,18 +90,21 @@ class SectionBuilderClass extends BaseComponent<Partial<APISectionComponent>> {
   }
 
   /**
-* Creates a new SectionBuilder.
-* @param opts - Config options.
-*/
-  constructor(opts: SectionOptions<TextDisplayBuilder[]>) {
-    super();
-    this.data.type = ComponentType.Section;
+   * Creates a new SectionBuilder.
+   * @param opts - Config options.
+   */
+  constructor(opts?: SectionOptions<TextDisplayBuilder[]>) {
+    const payload: Partial<APISectionComponent> = {
+      type: ComponentType.Section,
+      components: [],
+    };
+    super(payload as Partial<APISectionComponent>);
+
+    if (!opts) return;
     if (opts.components !== undefined) {
       const len = opts.components.length;
       if (len > 3) throw new Error("can't have more than 3 components here");
       this.data.components = opts.components as unknown as APITextDisplayComponent[];
-    } else {
-      this.data.components = [];
     }
     if (opts.accessory !== undefined) this.setAccessory(opts.accessory);
   }
@@ -158,17 +161,17 @@ class SectionBuilderClass extends BaseComponent<Partial<APISectionComponent>> {
   }
 
   /**
-* Sets the section accessory as a button component.
-* @param button - The ButtonBuilder instance.
-* @returns This builder for chaining.
-*/
+   * Sets the section accessory as a button component.
+   * @param button - The ButtonBuilder instance.
+   * @returns This builder for chaining.
+   */
   setButtonAccessory(button: ButtonBuilder): this { return this.setAccessory(button); }
 
   /**
-* Sets the section accessory as a thumbnail image.
-* @param thumbnail - The ThumbnailBuilder instance.
-* @returns This builder for chaining.
-*/
+   * Sets the section accessory as a thumbnail image.
+   * @param thumbnail - The ThumbnailBuilder instance.
+   * @returns This builder for chaining.
+   */
   setThumbnailAccessory(thumbnail: ThumbnailBuilder): this { return this.setAccessory(thumbnail); }
 
   /**
@@ -195,21 +198,24 @@ class SectionBuilderClass extends BaseComponent<Partial<APISectionComponent>> {
     for (let i = 0; i < len; i++) {
       serialized[i] = (comps![i] as TextDisplayBuilder).toJSON();
     }
-    const acc = this.data.accessory as SectionAccessory | undefined;
-    const serializedAcc = acc ? acc.toJSON() : undefined;
-    if (this.id !== undefined) {
-      (this.data as Record<string, unknown>).id = this.id;
-    }
-    return {
-      ...this.data,
+    const res: Record<string, unknown> = {
+      type: ComponentType.Section,
       components: serialized,
-      ...(serializedAcc ? { accessory: serializedAcc } : {}),
-    } as Record<string, unknown>;
+    };
+    const acc = this.data.accessory as SectionAccessory | undefined;
+    if (acc) {
+      res.accessory = acc.toJSON();
+    }
+    const idVal = this.id !== undefined ? this.id : this.data.id;
+    if (idVal !== undefined) {
+      res.id = idVal;
+    }
+    return res;
   }
 }
 
 export const SectionBuilder = SectionBuilderClass as unknown as {
-  new <ComponentType extends TextDisplayBuilder = TextDisplayBuilder, Components extends readonly ComponentType[] = readonly ComponentType[]>(opts: SectionOptions<Components>): SectionBuilderInstance<Components>;
+  new <ComponentType extends TextDisplayBuilder = TextDisplayBuilder, Components extends readonly ComponentType[] = readonly ComponentType[]>(opts?: SectionOptions<Components>): SectionBuilderInstance<Components>;
   from(data: APISectionComponent): SectionBuilder;
 };
 

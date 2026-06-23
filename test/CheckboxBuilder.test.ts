@@ -18,8 +18,11 @@ describe('CheckboxBuilder', () => {
     expect(cb.toJSON().default).toBe(true);
   });
 
-  it('throws if customId is missing', () => {
-    expect(() => new CheckboxBuilder({} as never)).toThrow('customId');
+  it('can be created empty or with empty object', () => {
+    const cb1 = new CheckboxBuilder();
+    expect(cb1.toJSON().type).toBe(23);
+    const cb2 = new CheckboxBuilder({});
+    expect(cb2.toJSON().type).toBe(23);
   });
 
   it('setDefault updates the value', () => {

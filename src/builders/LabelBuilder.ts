@@ -64,9 +64,9 @@ export interface LabelOptions<
   Description extends string = string,
 > {
   /** The label text shown above or beside the component (min 1, max 45 characters). */
-  label: Label & CheckMinLength<Label, 1, 'Label'> & CheckMaxLength<Label, 45, 'Label'>;
+  label?: Label & CheckMinLength<Label, 1, 'Label'> & CheckMaxLength<Label, 45, 'Label'>;
   /** The interactive component this label is paired with. */
-  component: Component;
+  component?: Component;
   /** Optional description shown below the label (max 100 characters). */
   description?: Description & CheckMaxLength<Description, 100, 'Description'>;
 }
@@ -147,26 +147,35 @@ class LabelBuilderClass extends BaseComponent<Partial<APILabelComponent>> {
     return (this.data as Record<string, unknown>).component as LabelComponentBuilder | undefined;
   }
 
-      /**
+  /**
    * Creates a new LabelBuilder.
    * @param opts - Config options.
    */
-constructor(opts: LabelOptions<string, LabelComponentBuilder, string>) {
-    super();
-    this.data.type = ComponentType.Label;
+  constructor(opts?: LabelOptions<string, LabelComponentBuilder, string>) {
+    const payload: Partial<APILabelComponent> = {
+      type: ComponentType.Label,
+    };
+    super(payload as Partial<APILabelComponent>);
 
-    if (!opts.label) throw new Error('label is required');
-    this.validateLength(opts.label, 45, 'label');
-    if (!opts.component) throw new Error('component is required');
-    const compType = opts.component.type;
-    if (compType === undefined || !ALLOWED_LABEL_TYPES.has(compType))
-      throw new Error(`component type ${compType} is not allowed inside a Label`);
-    if (opts.description !== undefined)
+    if (!opts) return;
+
+    if (opts.label !== undefined) {
+      if (opts.label.length < 1) throw new Error('label is required');
+      this.validateLength(opts.label, 45, 'label');
+      this.data.label = opts.label;
+    }
+
+    if (opts.component !== undefined) {
+      const compType = opts.component.type;
+      if (compType === undefined || !ALLOWED_LABEL_TYPES.has(compType))
+        throw new Error(`component type ${compType} is not allowed inside a Label`);
+      (this.data as Record<string, unknown>).component = opts.component;
+    }
+
+    if (opts.description !== undefined) {
       this.validateLength(opts.description, 100, 'description');
-
-    this.data.label = opts.label;
-    (this.data as Record<string, unknown>).component = opts.component;
-    if (opts.description !== undefined) this.data.description = opts.description;
+      this.data.description = opts.description;
+    }
   }
 
   /**
@@ -204,7 +213,7 @@ constructor(opts: LabelOptions<string, LabelComponentBuilder, string>) {
     return this;
   }
 
-      /**
+  /**
    * Shortcut to set a  component for this label.
    * @param comp - The Builder instance.
    * @returns This builder for chaining.
@@ -238,61 +247,61 @@ constructor(opts: LabelOptions<string, LabelComponentBuilder, string>) {
   }
 
   // Shortcuts for different component types
-      /**
+  /**
    * Shortcut to set a TextInput component for this label.
    * @param comp - The TextInputBuilder instance.
    * @returns This builder for chaining.
    */
   setTextInputComponent(comp: TextInputBuilder): this { return this.setComponent(comp); }
-      /**
+  /**
    * Shortcut to set a Checkbox component for this label.
    * @param comp - The CheckboxBuilder instance.
    * @returns This builder for chaining.
    */
   setCheckboxComponent(comp: CheckboxBuilder): this { return this.setComponent(comp); }
-      /**
+  /**
    * Shortcut to set a CheckboxGroup component for this label.
    * @param comp - The CheckboxGroupBuilder instance.
    * @returns This builder for chaining.
    */
   setCheckboxGroupComponent(comp: CheckboxGroupBuilder): this { return this.setComponent(comp); }
-      /**
+  /**
    * Shortcut to set a RadioGroup component for this label.
    * @param comp - The RadioGroupBuilder instance.
    * @returns This builder for chaining.
    */
   setRadioGroupComponent(comp: RadioGroupBuilder): this { return this.setComponent(comp); }
-      /**
+  /**
    * Shortcut to set a FileUpload component for this label.
    * @param comp - The FileUploadBuilder instance.
    * @returns This builder for chaining.
    */
   setFileUploadComponent(comp: FileUploadBuilder): this { return this.setComponent(comp); }
-      /**
+  /**
    * Shortcut to set a StringSelectMenu component for this label.
    * @param comp - The StringSelectMenuBuilder instance.
    * @returns This builder for chaining.
    */
   setStringSelectMenuComponent(comp: StringSelectMenuBuilder): this { return this.setComponent(comp); }
-      /**
+  /**
    * Shortcut to set a UserSelectMenu component for this label.
    * @param comp - The UserSelectMenuBuilder instance.
    * @returns This builder for chaining.
    */
   setUserSelectMenuComponent(comp: UserSelectMenuBuilder): this { return this.setComponent(comp); }
-      /**
+  /**
    * Shortcut to set a RoleSelectMenu component for this label.
    * @param comp - The RoleSelectMenuBuilder instance.
    * @returns This builder for chaining.
    */
   setRoleSelectMenuComponent(comp: RoleSelectMenuBuilder): this { return this.setComponent(comp); }
-      /**
+  /**
    * Shortcut to set a MentionableSelectMenu component for this label.
    * @param comp - The MentionableSelectMenuBuilder instance.
    * @returns This builder for chaining.
    */
   setMentionableSelectMenuComponent(comp: MentionableSelectMenuBuilder): this { return this.setComponent(comp); }
-      /**
+  /**
    * Shortcut to set a ChannelSelectMenu component for this label.
    * @param comp - The ChannelSelectMenuBuilder instance.
    * @returns This builder for chaining.
@@ -309,23 +318,31 @@ constructor(opts: LabelOptions<string, LabelComponentBuilder, string>) {
     const component = comp?.toJSON ? comp.toJSON() : comp;
     if (component && typeof component === 'object')
       this.validateModalComponent(component as Record<string, unknown>);
-    if (this.id !== undefined) {
-      (this.data as Record<string, unknown>).id = this.id;
-    }
-    return {
-      ...this.data,
+    
+    const res: APILabelComponent = {
+      type: ComponentType.Label,
+      label: this.data.label!,
       component: component as APILabelComponentChild,
-    } as APILabelComponent;
+    };
+    
+    if (this.data.description !== undefined) {
+      res.description = this.data.description;
+    }
+    const idVal = this.id !== undefined ? this.id : this.data.id;
+    if (idVal !== undefined) {
+      res.id = idVal;
+    }
+    return res;
   }
 }
 
 export const LabelBuilder = LabelBuilderClass as unknown as {
   new <
-    Label extends string,
+    Label extends string = string,
     Component extends LabelComponentBuilder = LabelComponentBuilder,
     Description extends string = string,
   >(
-    opts: LabelOptions<Label, Component, Description>,
+    opts?: LabelOptions<Label, Component, Description>,
   ): LabelBuilderInstance<Component>;
   from(data: APILabelComponent): LabelBuilder;
 };

@@ -118,9 +118,11 @@ class ContainerBuilderClass extends BaseComponent<Partial<APIContainerComponent>
 * @param opts - Config options.
 */
   constructor(opts?: ContainerOptions<ContainerComponent[]>) {
-    super();
-    this.data.type = ComponentType.Container;
-    this.data.components = [];
+    const payload: Partial<APIContainerComponent> = {
+      type: ComponentType.Container,
+      components: [],
+    };
+    super(payload as Partial<APIContainerComponent>);
 
     if (!opts) return;
 
@@ -286,13 +288,20 @@ class ContainerBuilderClass extends BaseComponent<Partial<APIContainerComponent>
       const c = comps![i] as ContainerComponent;
       serialized[i] = c.toJSON();
     }
-    if (this.id !== undefined) {
-      (this.data as Record<string, unknown>).id = this.id;
-    }
-    const res = {
-      ...this.data,
+    const res: APIContainerComponent = {
+      type: ComponentType.Container,
       components: serialized,
-    } as APIContainerComponent;
+    };
+    if (this.data.accent_color !== undefined) {
+      res.accent_color = this.data.accent_color;
+    }
+    if (this.data.spoiler !== undefined) {
+      res.spoiler = this.data.spoiler;
+    }
+    const idVal = this.id !== undefined ? this.id : this.data.id;
+    if (idVal !== undefined) {
+      res.id = idVal;
+    }
     BaseComponent.validateTreeLimits(res);
     return res;
   }

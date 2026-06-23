@@ -8,7 +8,7 @@ import { BaseComponent, resolveRaw } from './base.ts';
  */
 export interface FileOptions {
   /** The file URL - **must** use the `attachment://` scheme. */
-  url: string;
+  url?: string;
   /** Whether to blur the file preview behind a spoiler overlay. */
   spoiler?: boolean;
 }
@@ -18,7 +18,9 @@ export interface FileOptions {
  * @template Url The attachment URL string literal.
  */
 export type ValidateFileOptions<Url extends string> =
-  CheckAttachmentUrl<Url> extends { readonly error: string }
+  [Url] extends [never]
+  ? unknown
+  : CheckAttachmentUrl<Url> extends { readonly error: string }
   ? CheckAttachmentUrl<Url>
   : CheckMaxLength<Url, 512, 'url'> extends { readonly error: string }
   ? CheckMaxLength<Url, 512, 'url'>
@@ -76,13 +78,14 @@ class FileBuilderClass extends BaseComponent<Partial<APIFileComponent>> {
     return this.data.spoiler;
   }
 
-      /**
+  /**
    * Creates a new FileBuilder.
    * @param opts - Config options.
    */
-constructor(opts: FileOptions) {
+  constructor(opts?: FileOptions) {
     super();
     this.data.type = ComponentType.File;
+    if (!opts) return;
     if (opts.url !== undefined) this.setURL(opts.url);
     if (opts.spoiler !== undefined) this.setSpoiler(opts.spoiler);
   }
@@ -127,9 +130,9 @@ constructor(opts: FileOptions) {
 }
 
 export const FileBuilder = FileBuilderClass as unknown as {
-  new <Url extends string>(
-    opts: FileOptions & {
-      url: Url;
+  new <Url extends string = string>(
+    opts?: FileOptions & {
+      url?: Url;
     } & ValidateFileOptions<Url>,
   ): FileBuilderInstance;
   from(data: APIFileComponent): FileBuilder;

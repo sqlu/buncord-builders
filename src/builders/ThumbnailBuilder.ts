@@ -8,7 +8,7 @@ import { BaseComponent, resolveRaw } from './base.ts';
  */
 export interface ThumbnailOptions {
   /** Image URL (http/https/attachment scheme). */
-  url: string;
+  url?: string;
   /** Alt description text (up to 1024 chars). */
   description?: string;
   /** Blur behind a spoiler? */
@@ -21,7 +21,13 @@ export interface ThumbnailOptions {
  * @template Description The description string literal.
  */
 export type ValidateThumbnailOptions<Url extends string, Description extends string = string> =
-  CheckMediaUrl<Url> extends { readonly error: string }
+  [Url] extends [never]
+  ? ([Description] extends [never]
+      ? unknown
+      : CheckMaxLength<Description, 1024, 'description'> extends { readonly error: string }
+      ? CheckMaxLength<Description, 1024, 'description'>
+      : unknown)
+  : CheckMediaUrl<Url> extends { readonly error: string }
   ? CheckMediaUrl<Url>
   : CheckMaxLength<Url, 512, 'url'> extends { readonly error: string }
   ? CheckMaxLength<Url, 512, 'url'>
@@ -97,12 +103,13 @@ class ThumbnailBuilderClass extends BaseComponent<Partial<APIThumbnailComponent>
   }
 
   /**
-* Creates a new ThumbnailBuilder.
-* @param opts - Config options.
-*/
-  constructor(opts: ThumbnailOptions) {
+   * Creates a new ThumbnailBuilder.
+   * @param opts - Config options.
+   */
+  constructor(opts?: ThumbnailOptions) {
     super();
     this.data.type = ComponentType.Thumbnail;
+    if (!opts) return;
     if (opts.url !== undefined) this.setURL(opts.url);
     if (opts.description !== undefined) this.setDescription(opts.description);
     if (opts.spoiler !== undefined) this.setSpoiler(opts.spoiler);
@@ -172,11 +179,11 @@ class ThumbnailBuilderClass extends BaseComponent<Partial<APIThumbnailComponent>
 
 export const ThumbnailBuilder = ThumbnailBuilderClass as unknown as {
   new <
-    Url extends string,
+    Url extends string = string,
     Description extends string = string,
   >(
-    opts: ThumbnailOptions & {
-      url: Url;
+    opts?: ThumbnailOptions & {
+      url?: Url;
       description?: Description;
     } & ValidateThumbnailOptions<Url, Description>,
   ): ThumbnailBuilderInstance;

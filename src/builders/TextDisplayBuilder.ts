@@ -9,7 +9,7 @@ import { BaseComponent, resolveRaw } from './base.ts';
  */
 export interface TextDisplayOptions<Content extends string = string> {
   /** The markdown content to display (1–4000 characters). */
-  content: Content & CheckMinLength<Content, 1, 'content'> & CheckMaxLength<Content, 4000, 'content'>;
+  content?: Content & CheckMinLength<Content, 1, 'content'> & CheckMaxLength<Content, 4000, 'content'>;
 }
 
 /**
@@ -59,9 +59,10 @@ class TextDisplayBuilderClass extends BaseComponent<Partial<APITextDisplayCompon
    * Creates a new TextDisplayBuilder.
    * @param opts - Config options.
    */
-constructor(opts: TextDisplayOptions<string>) {
+  constructor(opts?: TextDisplayOptions<string>) {
     super();
     this.data.type = ComponentType.TextDisplay;
+    if (!opts) return;
     if (opts.content !== undefined) this.setContent(opts.content);
   }
 
@@ -92,7 +93,7 @@ constructor(opts: TextDisplayOptions<string>) {
 }
 
 export const TextDisplayBuilder = TextDisplayBuilderClass as unknown as {
-  new <Content extends string = string>(opts: TextDisplayOptions<Content>): TextDisplayBuilderInstance;
+  new <Content extends string = string>(opts?: TextDisplayOptions<Content>): TextDisplayBuilderInstance;
   from(data: APITextDisplayComponent): TextDisplayBuilder;
 };
 

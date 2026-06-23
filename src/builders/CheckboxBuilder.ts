@@ -32,9 +32,7 @@ export type ValidateCheckboxOptions<Opts> =
   ? CheckStringConstraints<GetCustomIdField<Opts>, 1, 100, 'customId'>
   : Opts extends { customId: string; custom_id: string }
   ? { readonly error: 'Cannot specify both customId and custom_id' }
-  : Opts extends { customId: string } | { custom_id: string }
-  ? unknown
-  : { readonly error: 'Checkbox requires a customId or custom_id property' };
+  : unknown;
 
 /**
  * Interface for a fully configured CheckboxBuilder.
@@ -99,26 +97,28 @@ class CheckboxBuilderClass extends BaseComponent<Partial<APICheckboxComponent>> 
   }
 
   /**
-* Creates a new CheckboxBuilder.
-* @param opts - Config options.
-*/
-  constructor(opts: CheckboxOptions<string>) {
+   * Creates a new CheckboxBuilder.
+   * @param opts - Config options.
+   */
+  constructor(opts?: CheckboxOptions<string>) {
     super();
     this.data.type = ComponentType.Checkbox;
 
-    const cid = opts.customId ?? opts.custom_id;
-    if (!cid) throw new Error('customId is required');
-    this.validateCustomId(cid);
+    if (!opts) return;
 
-    this.data.custom_id = cid;
+    const cid = opts.customId ?? opts.custom_id;
+    if (cid !== undefined) {
+      this.validateCustomId(cid);
+      this.data.custom_id = cid;
+    }
     if (opts.default !== undefined) this.data.default = opts.default;
   }
 
   /**
-* Sets the custom ID (up to 100 chars).
-* @param cid - Unique custom ID.
-* @returns This builder for chaining.
-*/
+   * Sets the custom ID (up to 100 chars).
+   * @param cid - Unique custom ID.
+   * @returns This builder for chaining.
+   */
   setCustomId(cid: CheckMinLength<string, 1, 'customId'> & CheckMaxLength<string, 100, 'customId'>): this {
     this.validateCustomId(cid);
     this.data.custom_id = cid;
@@ -156,7 +156,7 @@ export const CheckboxBuilder = CheckboxBuilderClass as unknown as {
     CustomId extends string = string,
     Opts extends CheckboxOptions<CustomId> = CheckboxOptions<CustomId>,
   >(
-    opts: Opts & ValidateCheckboxOptions<Opts>,
+    opts?: Opts & ValidateCheckboxOptions<Opts>,
   ): CheckboxBuilderInstance<ExtractCustomId<Opts>>;
   from(data: APICheckboxComponent): CheckboxBuilder;
 };
