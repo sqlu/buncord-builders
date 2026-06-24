@@ -15,5 +15,5 @@
   <line x1="110" y1="4" x2="110" y2="24" stroke="#30363d" stroke-width="1"/>
   <!-- Right Side Value -->
   <rect x="116" y="5" width="98" height="18" rx="4" fill="url(#grad-ours)" filter="url(#glow)"/>
-  <text x="165" y="17" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="800" fill="#ffffff" text-anchor="middle" letter-spacing="0.5">~8.2x FASTER</text>
+  <text x="165" y="17" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="800" fill="#ffffff" text-anchor="middle" letter-spacing="0.5">~7.9x FASTER</text>
 </svg>
