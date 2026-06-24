@@ -51,17 +51,17 @@ This package is optimized for speed. It runs close to 0ms overhead by using dire
 ![Benchmark Graph](./assets/benchmark.svg)
 
 > [!TIP]
-> **Performance Boost:** With over **7.9x performance** (more than 693% faster processing), `@buncord/builders` eliminates instantiation and serialization bottlenecks entirely, running close to 0ms overhead.
+> **Performance Boost:** With over **7.8x performance** (more than 676% faster processing), `@buncord/builders` eliminates instantiation and serialization bottlenecks entirely, running close to 0ms overhead.
 
 Below are the detailed results comparing **50,000 iterations** of component construction and serialization against `@discordjs/builders`.
 
-*Last Benchmarked: June 23, 2026*
+*Last Benchmarked: June 24, 2026*
 
 | Task | `@discordjs/builders` | `@buncord/builders` | Speed Comparison |
 | :--- | :--- | :--- | :---: |
-| **Instantiation** | ~148.9 ms | **~17.2 ms** | **8.6x faster** |
-| **Serialization** | ~43.0 ms | **~7.0 ms** | **6.2x faster** |
-| **Total** | ~191.9 ms | **~24.2 ms** | **7.9x faster** |
+| **Instantiation** | ~161.2 ms | **~18.0 ms** | **8.9x faster** |
+| **Serialization** | ~42.1 ms | **~8.2 ms** | **5.1x faster** |
+| **Total** | ~203.3 ms | **~26.2 ms** | **7.8x faster** |
 
 ## Component Architecture
 
