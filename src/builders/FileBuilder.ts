@@ -3,6 +3,9 @@ import type { APIFileComponent } from '../types.ts';
 import type { CheckAttachmentUrl, CheckMaxLength } from '../utils/guards.ts';
 import { BaseComponent, resolveRaw } from './base.ts';
 
+/** Maximum length of an unfurled media item URL. */
+const MAX_MEDIA_URL_LENGTH = 2048;
+
 /**
  * Config options for a new FileBuilder.
  */
@@ -22,8 +25,8 @@ export type ValidateFileOptions<Url extends string> =
   ? unknown
   : CheckAttachmentUrl<Url> extends { readonly error: string }
   ? CheckAttachmentUrl<Url>
-  : CheckMaxLength<Url, 512, 'url'> extends { readonly error: string }
-  ? CheckMaxLength<Url, 512, 'url'>
+  : CheckMaxLength<Url, 2048, 'url'> extends { readonly error: string }
+  ? CheckMaxLength<Url, 2048, 'url'>
   : unknown;
 
 /**
@@ -43,7 +46,7 @@ export interface FileBuilderInstance extends FileBuilderClass {}
  * const file = new FileBuilder({ url: 'attachment://snayz_code.ts' });
  * ```
  *
- * @see {@link https://discord.com/developers/docs/components/reference#file Discord Docs - File}
+ * @see {@link https://docs.discord.com/developers/components/reference#file Discord Docs - File}
  */
 class FileBuilderClass extends BaseComponent<Partial<APIFileComponent>> {
   public override readonly type = ComponentType.File;
@@ -96,9 +99,12 @@ class FileBuilderClass extends BaseComponent<Partial<APIFileComponent>> {
    * @param url - The attachment URL (e.g. `attachment://report.pdf`).
    * @returns This builder for chaining.
    *
-   * @see {@link https://discord.com/developers/docs/reference#attachment-data Discord Docs - Attachment Data}
+   * @see {@link https://docs.discord.com/developers/reference#uploading-files Discord Docs - Attachment Data}
    */
   setURL(url: CheckAttachmentUrl<string>): this {
+    if (!url.startsWith('attachment://'))
+      throw new Error(`url must use the attachment:// scheme (got "${url}")`);
+    this.validateLength(url, MAX_MEDIA_URL_LENGTH, 'url');
     this.data.file = { url };
     return this;
   }
@@ -120,12 +126,9 @@ class FileBuilderClass extends BaseComponent<Partial<APIFileComponent>> {
    * @returns The JSON representation.
    * @throws If no URL has been set.
    */
-  override toJSON(): Record<string, unknown> {
+  override toJSON(): APIFileComponent {
     if (!this.data.file?.url) throw new Error('need file url to toJSON()');
-    if (this.id !== undefined) {
-      (this.data as Record<string, unknown>).id = this.id;
-    }
-    return this.data as Record<string, unknown>;
+    return this.data as APIFileComponent;
   }
 }
 

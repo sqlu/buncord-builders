@@ -28,7 +28,7 @@ export interface SeparatorBuilderInstance extends SeparatorBuilderClass {}
  * const sep = new SeparatorBuilder({ divider: true, spacing: SeparatorSpacingSize.Large });
  * ```
  *
- * @see {@link https://discord.com/developers/docs/components/reference#separator Discord Docs - Separator}
+ * @see {@link https://docs.discord.com/developers/components/reference#separator Discord Docs - Separator}
  */
 class SeparatorBuilderClass extends BaseComponent<Partial<APISeparatorComponent>> {
   public override readonly type = ComponentType.Separator;
@@ -41,7 +41,7 @@ class SeparatorBuilderClass extends BaseComponent<Partial<APISeparatorComponent>
    */
   public static from(data: APISeparatorComponent): SeparatorBuilderClass {
     const raw = resolveRaw(data) as unknown as APISeparatorComponent;
-    const builder = new SeparatorBuilderClass({});
+    const builder = new SeparatorBuilderClass();
     if (raw.divider !== undefined) builder.setDivider(raw.divider);
     if (raw.spacing !== undefined) builder.setSpacing(raw.spacing);
     if (raw.id !== undefined) builder.setId(raw.id);
@@ -64,14 +64,15 @@ class SeparatorBuilderClass extends BaseComponent<Partial<APISeparatorComponent>
     return this.data.spacing;
   }
 
-      /**
+  /**
    * Creates a new SeparatorBuilder.
    * @param opts - Config options.
    */
-constructor(opts: SeparatorOptions = {}) {
+  constructor(opts?: SeparatorOptions) {
     super();
     this.data.type = ComponentType.Separator;
-    if (opts.divider !== undefined) this.setDivider(opts.divider);
+    if (!opts) return;
+    if (opts.divider !== undefined) this.data.divider = opts.divider;
     if (opts.spacing !== undefined) this.setSpacing(opts.spacing);
   }
 
@@ -92,9 +93,10 @@ constructor(opts: SeparatorOptions = {}) {
    * @param spacing - `SeparatorSpacingSize.Small` (1) or `SeparatorSpacingSize.Large` (2).
    * @returns This builder for chaining.
    *
-   * @see {@link https://discord.com/developers/docs/components/reference#separator-separator-spacing-size-types Discord Docs}
+   * @see {@link https://docs.discord.com/developers/components/reference#separator-spacing-type Discord Docs}
    */
   setSpacing(spacing: SeparatorSpacingSize): this {
+    this.validateRange(spacing, SeparatorSpacingSize.Small, SeparatorSpacingSize.Large, 'spacing');
     this.data.spacing = spacing;
     return this;
   }
@@ -113,9 +115,8 @@ constructor(opts: SeparatorOptions = {}) {
    * @returns The JSON representation.
    */
   override toJSON(): APISeparatorComponent {
-    if (this.id !== undefined) {
-      (this.data as Record<string, unknown>).id = this.id;
-    }
+    if (this.data.spacing !== undefined)
+      this.validateRange(this.data.spacing, SeparatorSpacingSize.Small, SeparatorSpacingSize.Large, 'spacing');
     return this.data as APISeparatorComponent;
   }
 }

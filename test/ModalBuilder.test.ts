@@ -2,7 +2,6 @@ import { describe, it, expect } from 'bun:test';
 import {
   ModalBuilder,
   TextInputBuilder,
-  TextInputStyle,
   LabelBuilder,
   CheckboxBuilder,
   CheckboxGroupBuilder,
@@ -20,12 +19,6 @@ import {
 } from '../src/index.ts';
 
 describe('ModalBuilder', () => {
-  const input = new TextInputBuilder({
-    customId: 'field1',
-    label: 'Your name',
-    style: TextInputStyle.Short,
-  });
-
   const label = new LabelBuilder({
     label: 'Accept Terms',
     component: new CheckboxBuilder({ customId: 'tos' }),

@@ -6,7 +6,7 @@ import {
   ContainerBuilder,
   TextDisplayBuilder,
   SeparatorBuilder,
-  SeparatorSpacingSize,
+
 } from '../src/index.ts';
 
 describe('ActionRowBuilder', () => {

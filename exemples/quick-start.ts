@@ -4,7 +4,7 @@
  *
  * Run with:  bun run exemples/quick-start.ts
  *
- * @see {@link https://discord.com/developers/docs/components/reference}
+ * @see {@link https://docs.discord.com/developers/components/reference}
  */
 
 import {
@@ -36,7 +36,7 @@ const container = new ContainerBuilder()
         }),
         new ButtonBuilder({
           style: ButtonStyle.Link,
-          url: 'https://discord.com/developers/docs/components/reference',
+          url: 'https://docs.discord.com/developers/components/reference',
           label: 'Discord docs',
         }),
       ],

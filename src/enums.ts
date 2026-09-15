@@ -87,10 +87,21 @@ export const enum SeparatorSpacingSize {
 }
 
 /**
- * Flags for message layout.
+ * Message flags that an application is allowed to set when creating
+ * a message or responding to an interaction.
+ *
+ * @see {@link https://docs.discord.com/developers/resources/message#message-flags}
  */
 export const enum MessageFlags {
-  /** Forces V2 component layout. */
+  /** Do not render any embeds for this message. */
+  SuppressEmbeds = 1 << 2,
+  /** Only the user who triggered the interaction can see this message. */
+  Ephemeral = 1 << 6,
+  /** Do not trigger push or desktop notifications for this message. */
+  SuppressNotifications = 1 << 12,
+  /** This message is a voice message. */
+  VoiceMessage = 1 << 13,
+
   IsComponentsV2 = 1 << 15,
 }
 

@@ -7,9 +7,50 @@ import { ComponentType } from '../enums.ts';
 type BuildTuple<L extends number, T extends unknown[] = []> =
   T['length'] extends L ? T : BuildTuple<L, [...T, unknown]>;
 
+type DecimalDigit = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9';
+type DigitValue = { '0': 0; '1': 1; '2': 2; '3': 3; '4': 4; '5': 5; '6': 6; '7': 7; '8': 8; '9': 9 };
+
+/** Compare equal-length decimal strings one digit at a time. */
+type CompareDecimalDigits<A extends string, B extends string> =
+  A extends `${infer FirstA extends DecimalDigit}${infer RestA}`
+  ? B extends `${infer FirstB extends DecimalDigit}${infer RestB}`
+    ? FirstA extends FirstB
+      ? CompareDecimalDigits<RestA, RestB>
+      : BuildTuple<DigitValue[FirstA]> extends [...BuildTuple<DigitValue[FirstB]>, ...unknown[]]
+        ? false
+        : true
+    : true
+  : true;
+
+type CompareDecimalIntegers<A extends string, B extends string> =
+  StringLength<A> extends StringLength<B>
+  ? CompareDecimalDigits<A, B>
+  : BuildTuple<StringLength<A>> extends [...BuildTuple<StringLength<B>>, ...unknown[]]
+    ? false
+    : true;
+
+/** Compare a single pair of nonnegative numeric literals. */
+type CompareNumericLiteral<A extends number, B extends number> =
+  A extends B
+  ? true
+  : `${A}` extends `-${string}`
+  ? true
+  : `${B}` extends `-${string}`
+  ? true
+  : `${A}` extends `${bigint}`
+  ? `${B}` extends `${bigint}`
+    ? CompareDecimalIntegers<`${A}`, `${B}`>
+    : true
+  : true;
+
+/** Distribute both bounds to check every possible pairing of literal unions. */
+type CompareNumericUnions<A extends number, B extends number> =
+  A extends unknown ? B extends unknown ? CompareNumericLiteral<A, B> : never : never;
+
 /**
- * Checks whether A is less than or equal to B at the type level.
- * Works for small positive integers.
+ * Checks nonnegative integer bounds by decimal digits, avoiding tuple recursion
+ * proportional to the bound. Dynamic and unsupported numeric forms defer to
+ * runtime validation.
  */
 export type IsLessThanOrEqual<A extends number, B extends number> =
   [A] extends [never]
@@ -20,9 +61,7 @@ export type IsLessThanOrEqual<A extends number, B extends number> =
   ? true
   : number extends B
   ? true
-  : A extends B
-  ? true
-  : BuildTuple<A> extends [...BuildTuple<B>, ...unknown[]]
+  : false extends CompareNumericUnions<A, B>
   ? false
   : true;
 
@@ -33,6 +72,15 @@ export type StringLength<S extends string, Acc extends unknown[] = []> =
   S extends `${string}${infer Rest}`
   ? StringLength<Rest, [...Acc, unknown]>
   : Acc['length'];
+
+/**
+ * Bounds that are too large to verify at the type level.
+ *
+ * {@link StringLength} counts characters by building a tuple one element at a
+ * time, so checking a bound in the thousands blows past the TypeScript
+ * instantiation depth limit. These bounds are enforced at runtime instead.
+ */
+type UncheckableLengthBound = 512 | 1024 | 2048 | 4000;
 
 /**
  * Validates that a string literal does not exceed a maximum length.
@@ -47,7 +95,7 @@ export type CheckMaxLength<
   ? never
   : string extends S
   ? S
-  : Max extends 512 | 1024 | 4000
+  : Max extends UncheckableLengthBound
   ? S
   : IsLessThanOrEqual<StringLength<S>, Max> extends true
   ? S
@@ -66,7 +114,7 @@ export type CheckMinLength<
   ? never
   : string extends S
   ? S
-  : Min extends 512 | 1024 | 4000
+  : Min extends UncheckableLengthBound
   ? S
   : IsLessThanOrEqual<Min, StringLength<S>> extends true
   ? S
@@ -91,7 +139,7 @@ export type CheckArrayLength<
   : { readonly error: `${Name} must have at least ${Min} elements` };
 
 /**
- * Validates that a string URL starts with http:// or https://.
+ * Validates that a string URL uses a scheme Discord accepts on link buttons.
  */
 export type CheckUrl<Url extends string> =
   [Url] extends [never]
@@ -100,7 +148,7 @@ export type CheckUrl<Url extends string> =
   ? Url
   : Url extends `http://${string}` | `https://${string}` | `discord://${string}`
   ? Url
-  : { readonly error: 'URL must start with http:// or https://' };
+  : { readonly error: 'URL must start with http://, https://, or discord://' };
 
 /**
  * Validates that a string URL starts with http://, https://, or attachment://.
@@ -139,15 +187,6 @@ export type AllowedSelectMenuRange =
  */
 export type FileUploadRange =
   | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
-
-/**
- * Makes sure you pass at least one of the specified properties in the object.
- * @template T The target object type.
- * @template Keys The keys of which at least one must be required.
- */
-type RequireAtLeastOne<T, Keys extends keyof T = keyof T> =
-  Pick<T, Exclude<keyof T, Keys>> &
-  { [K in Keys]-?: Required<Pick<T, K>> & Partial<Pick<T, Exclude<Keys, K>>> }[Keys];
 
 /**
  * Requires exactly one of customId or custom_id to be present.

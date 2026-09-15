@@ -41,15 +41,7 @@ describe('FileUploadBuilder', () => {
     ).toThrow('between 0 and 10');
 
     expect(() =>
-      // @ts-expect-error
-      new FileUploadBuilder({
-        customId: 'x',
-        minValues: 0,
-      }),
-    ).toThrow('required is false');
-
-    expect(() =>
-      // @ts-expect-error
+      // @ts-expect-error - zero files conflicts with required:true
       new FileUploadBuilder({
         customId: 'x',
         required: true,
@@ -66,7 +58,7 @@ describe('FileUploadBuilder', () => {
     ).toThrow('between 1 and 10');
   });
 
-  it('allows zero minValues only when required is false', () => {
+  it('allows zero minValues when required is false', () => {
     const builder = new FileUploadBuilder({
       customId: 'optional_upload',
       required: false,
@@ -74,6 +66,31 @@ describe('FileUploadBuilder', () => {
     });
     expect(builder.toJSON().min_values).toBe(0);
     expect(builder.toJSON().required).toBe(false);
+  });
+
+  // Discord defaults `required` to true on file uploads.
+  // https://docs.discord.com/developers/components/reference#file-upload
+  it('rejects zero minValues when required is left unset', () => {
+    // @ts-expect-error - zero files requires required:false
+    expect(() => new FileUploadBuilder({ customId: 'optional_upload', minValues: 0 })).toThrow('required is false');
+  });
+
+  it('restricts uploads to a list of file extensions', () => {
+    const builder = new FileUploadBuilder({
+      customId: 'avatar',
+      fileTypes: ['.png', '.jpg'],
+    }).addFileTypes('.webp');
+
+    expect(builder.fileTypes).toEqual(['.png', '.jpg', '.webp']);
+    expect(builder.toJSON().file_types).toEqual(['.png', '.jpg', '.webp']);
+
+    expect(() => builder.setFileTypes(Array.from({ length: 11 }, (_, i) => `ext${i}`))).toThrow(
+      "fileTypes can't have more than 10 entries",
+    );
+    expect(() => builder.setFileTypes(['.png', ''])).toThrow('must be a non-empty file extension');
+
+    builder.clearFileTypes();
+    expect(builder.toJSON().file_types).toBeUndefined();
   });
 
   it('supports fluid setting methods', () => {

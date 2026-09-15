@@ -28,7 +28,7 @@ We have type checking enabled. Run:
 ```bash
 bun run typecheck
 ```
-Your code must compile cleanly without errors or unused `@ts-expect-error` directives.
+Your code must compile cleanly without errors or unused `@ts-expect-error` directives. The typecheck covers source, tests and benchmark scripts.
 
 ## Submitting Pull Requests
 1. Create a new branch for your changes.
@@ -36,3 +36,17 @@ Your code must compile cleanly without errors or unused `@ts-expect-error` direc
 3. Make sure to whitelist new keys in `toJSON()` to avoid payload pollution.
 4. Run `bun test` and `bun run typecheck`.
 5. Submit a PR. We will check it.
+
+## Code conventions
+
+Keep the package focused on small, typed Discord payload builders for Bun, without runtime dependencies.
+
+## Benchmarks
+
+```sh
+bun run benchmark:ci
+bun run benchmark:payload
+bun run benchmark:native -- --iterations=2000 --trials=7 --warmup=500
+bun run benchmark:native -- --verify-only
+```
+

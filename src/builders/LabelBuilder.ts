@@ -15,6 +15,12 @@ import type {
   ChannelSelectMenuBuilder,
 } from './SelectMenuBuilders.ts';
 
+/** Maximum length of the label text. */
+const MAX_LABEL_LENGTH = 45;
+
+/** Maximum length of the optional description text. */
+const MAX_DESCRIPTION_LENGTH = 100;
+
 // Accepted types inside a Label
 const SELECT_TYPES = new Set<number>([
   ComponentType.StringSelect,
@@ -94,13 +100,13 @@ export interface LabelBuilderInstance<Component extends LabelComponentBuilder>
  * @example
  * ```ts
  * const field = new LabelBuilder({
- *   label: Snayz Developer ID',
+ *   label: 'Snayz Developer ID',
  *   description: 'Enter your developer ID',
  *   component: new TextInputBuilder({ customId: 'dev_id', style: TextInputStyle.Short }),
  * });
  * ```
  *
- * @see {@link https://discord.com/developers/docs/components/reference#label Discord Docs - Label}
+ * @see {@link https://docs.discord.com/developers/components/reference#label Discord Docs - Label}
  */
 class LabelBuilderClass extends BaseComponent<Partial<APILabelComponent>> {
   public override readonly type = ComponentType.Label;
@@ -161,7 +167,7 @@ class LabelBuilderClass extends BaseComponent<Partial<APILabelComponent>> {
 
     if (opts.label !== undefined) {
       if (opts.label.length < 1) throw new Error('label is required');
-      this.validateLength(opts.label, 45, 'label');
+      this.validateLength(opts.label, MAX_LABEL_LENGTH, 'label');
       this.data.label = opts.label;
     }
 
@@ -173,7 +179,7 @@ class LabelBuilderClass extends BaseComponent<Partial<APILabelComponent>> {
     }
 
     if (opts.description !== undefined) {
-      this.validateLength(opts.description, 100, 'description');
+      this.validateLength(opts.description, MAX_DESCRIPTION_LENGTH, 'description');
       this.data.description = opts.description;
     }
   }
@@ -186,7 +192,7 @@ class LabelBuilderClass extends BaseComponent<Partial<APILabelComponent>> {
    * @throws If label exceeds 45 characters.
    */
   setLabel(lbl: CheckMaxLength<string, 45, 'label'>): this {
-    this.validateLength(lbl, 45, 'label');
+    this.validateLength(lbl, MAX_LABEL_LENGTH, 'label');
     this.data.label = lbl;
     return this;
   }
@@ -199,7 +205,7 @@ class LabelBuilderClass extends BaseComponent<Partial<APILabelComponent>> {
    * @throws If description exceeds 100 characters.
    */
   setDescription(desc: CheckMaxLength<string, 100, 'description'>): this {
-    this.validateLength(desc, 100, 'description');
+    this.validateLength(desc, MAX_DESCRIPTION_LENGTH, 'description');
     this.data.description = desc;
     return this;
   }
@@ -239,8 +245,8 @@ class LabelBuilderClass extends BaseComponent<Partial<APILabelComponent>> {
     }
     if (payload.type === ComponentType.CheckboxGroup) {
       const options = Array.isArray(payload.options) ? payload.options : [];
-      if (options.length < 2 || options.length > 10)
-        throw new Error(`checkbox group options must have between 2 and 10 entries (got ${options.length})`);
+      if (options.length < 1 || options.length > 10)
+        throw new Error(`checkbox group options must have between 1 and 10 entries (got ${options.length})`);
       if (payload.min_values === 0 && payload.required !== false)
         throw new Error('checkbox group minValues can only be 0 if required is false');
     }
@@ -314,21 +320,26 @@ class LabelBuilderClass extends BaseComponent<Partial<APILabelComponent>> {
    * @returns The JSON representation.
    */
   override toJSON(): APILabelComponent {
+    const label = this.data.label;
+    if (label === undefined) throw new Error('label is required to serialize a Label component');
+
     const comp = (this.data as Record<string, unknown>).component as LabelComponentBuilder | undefined;
-    const component = comp?.toJSON ? comp.toJSON() : comp;
+    if (comp === undefined) throw new Error('component is required to serialize a Label component');
+
+    const component = comp.toJSON ? comp.toJSON() : comp;
     if (component && typeof component === 'object')
-      this.validateModalComponent(component as Record<string, unknown>);
-    
+      this.validateModalComponent(component as unknown as Record<string, unknown>);
+
     const res: APILabelComponent = {
       type: ComponentType.Label,
-      label: this.data.label!,
+      label,
       component: component as APILabelComponentChild,
     };
     
     if (this.data.description !== undefined) {
       res.description = this.data.description;
     }
-    const idVal = this.id !== undefined ? this.id : this.data.id;
+    const idVal = this.data.id;
     if (idVal !== undefined) {
       res.id = idVal;
     }

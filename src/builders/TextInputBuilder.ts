@@ -11,6 +11,15 @@ import type {
 } from '../utils/guards.ts';
 import { BaseComponent, resolveRaw } from './base.ts';
 
+/** Maximum length of a text input value, and the highest min/max length bound. */
+const MAX_TEXT_LENGTH = 4000;
+
+/** Maximum length of the deprecated inline label. */
+const MAX_LABEL_LENGTH = 45;
+
+/** Maximum length of the placeholder text. */
+const MAX_PLACEHOLDER_LENGTH = 100;
+
 /**
  * Config options for a new TextInputBuilder.
  * @template Label The label string literal.
@@ -28,7 +37,11 @@ export interface TextInputOptions<
   MinLength extends number = number,
   MaxLength extends number = number,
 > {
-  /** Legacy inline label text (up to 45 chars). */
+  /**
+   * Legacy inline label text (up to 45 chars).
+   * @deprecated Wrap the input in a `LabelBuilder` instead. Discord ignores this
+   * field when the input sits inside a Label component.
+   */
   label?: Label;
   /** Input style (Short or Paragraph). */
   style?: TextInputStyle;
@@ -120,8 +133,8 @@ export interface TextInputBuilderInstance<CustomId extends string>
  * });
  * ```
  *
- * @see {@link https://discord.com/developers/docs/components/reference#text-input Discord Docs - Text Input}
- * @see {@link https://discord.com/developers/docs/components/reference#text-input-text-input-styles Text Input Styles}
+ * @see {@link https://docs.discord.com/developers/components/reference#text-input Discord Docs - Text Input}
+ * @see {@link https://docs.discord.com/developers/components/reference#text-input-style Text Input Styles}
  */
 class TextInputBuilderClass extends BaseComponent<Partial<APITextInputComponent>> {
   public override readonly type = ComponentType.TextInput;
@@ -243,10 +256,10 @@ class TextInputBuilderClass extends BaseComponent<Partial<APITextInputComponent>
         throw new Error(`customId is too long, max is 100 characters but got ${len}`);
       }
     }
-    if (minLen !== undefined && (minLen < 0 || minLen > 4000)) {
+    if (minLen !== undefined && (!Number.isInteger(minLen) || minLen < 0 || minLen > 4000)) {
       throw new Error(`minLength must be between 0 and 4000, but you set it to ${minLen}`);
     }
-    if (maxLen !== undefined && (maxLen < 1 || maxLen > 4000)) {
+    if (maxLen !== undefined && (!Number.isInteger(maxLen) || maxLen < 1 || maxLen > 4000)) {
       throw new Error(`maxLength must be between 1 and 4000, but you set it to ${maxLen}`);
     }
     if (minLen !== undefined && maxLen !== undefined && minLen > maxLen) {
@@ -303,7 +316,7 @@ class TextInputBuilderClass extends BaseComponent<Partial<APITextInputComponent>
    * @deprecated Wrap in {@link LabelBuilder} instead.
    */
   setLabel(lbl: CheckMaxLength<string, 45, 'label'>): this {
-    this.validateLength(lbl, 45, 'label');
+    this.validateLength(lbl, MAX_LABEL_LENGTH, 'label');
     this.data.label = lbl;
     return this;
   }
@@ -323,7 +336,7 @@ class TextInputBuilderClass extends BaseComponent<Partial<APITextInputComponent>
    * @param style - `TextInputStyle.Short` for a single-line input, `TextInputStyle.Paragraph` for multi-line.
    * @returns This builder for chaining.
    *
-   * @see {@link https://discord.com/developers/docs/components/reference#text-input-text-input-styles Discord Docs}
+   * @see {@link https://docs.discord.com/developers/components/reference#text-input-style Discord Docs}
    */
   setStyle(style: TextInputStyle): this {
     this.data.style = style;
@@ -338,7 +351,7 @@ class TextInputBuilderClass extends BaseComponent<Partial<APITextInputComponent>
    * @throws If `min` is out of range or exceeds `maxLength`.
    */
   setMinLength(min: number): this {
-    this.validateRange(min, 0, 4000, 'minLength');
+    this.validateRange(min, 0, MAX_TEXT_LENGTH, 'minLength');
     const max: number | undefined = this.data.max_length;
     if (max !== undefined && min > max)
       throw new Error(`min length can't be more than max length (you set min to ${min} and max to ${max})`);
@@ -354,7 +367,7 @@ class TextInputBuilderClass extends BaseComponent<Partial<APITextInputComponent>
    * @throws If `max` is out of range or less than `minLength`.
    */
   setMaxLength(max: number): this {
-    this.validateRange(max, 1, 4000, 'maxLength');
+    this.validateRange(max, 1, MAX_TEXT_LENGTH, 'maxLength');
     const min: number | undefined = this.data.min_length;
     if (min !== undefined && min > max)
       throw new Error(`min length can't be more than max length (you set min to ${min} and max to ${max})`);
@@ -369,7 +382,7 @@ class TextInputBuilderClass extends BaseComponent<Partial<APITextInputComponent>
    * @returns This builder for chaining.
    */
   setPlaceholder(placeholder: CheckMaxLength<string, 100, 'placeholder'>): this {
-    this.validateLength(placeholder, 100, 'placeholder');
+    this.validateLength(placeholder, MAX_PLACEHOLDER_LENGTH, 'placeholder');
     this.data.placeholder = placeholder;
     return this;
   }
@@ -380,8 +393,20 @@ class TextInputBuilderClass extends BaseComponent<Partial<APITextInputComponent>
    * @param value - Default value string.
    * @returns This builder for chaining.
    */
+  private validateValue(value: string): void {
+    this.validateLength(value, MAX_TEXT_LENGTH, 'value');
+    const min = this.data.min_length;
+    if (min !== undefined && value.length < min) {
+      throw new Error(`value is too short, need at least ${min} characters but only got ${value.length}`);
+    }
+    const max = this.data.max_length;
+    if (max !== undefined && value.length > max) {
+      throw new Error(`value is too long, max is ${max} characters but got ${value.length}`);
+    }
+  }
+
   setValue(value: CheckMaxLength<string, 4000, 'value'>): this {
-    this.validateLength(value, 4000, 'value');
+    this.validateValue(value);
     this.data.value = value;
     return this;
   }
@@ -402,12 +427,16 @@ class TextInputBuilderClass extends BaseComponent<Partial<APITextInputComponent>
    * @returns The JSON representation.
    */
   override toJSON(): APITextInputComponent {
-    if (this.id !== undefined) {
-      (this.data as Record<string, unknown>).id = this.id;
-    }
-    if (this.data.style === undefined) {
-      this.data.style = TextInputStyle.Short;
-    }
+    this.validateCustomId(this.data.custom_id ?? '');
+    if (this.data.style !== TextInputStyle.Short && this.data.style !== TextInputStyle.Paragraph)
+      throw new Error('style must be Short (1) or Paragraph (2)');
+    if (this.data.min_length !== undefined) this.validateRange(this.data.min_length, 0, MAX_TEXT_LENGTH, 'minLength');
+    if (this.data.max_length !== undefined) this.validateRange(this.data.max_length, 1, MAX_TEXT_LENGTH, 'maxLength');
+    if (this.data.min_length !== undefined && this.data.max_length !== undefined && this.data.min_length > this.data.max_length)
+      throw new Error('minLength cannot exceed maxLength');
+    if (this.data.value !== undefined) this.validateValue(this.data.value);
+    this.validateLength(this.data.label, MAX_LABEL_LENGTH, 'label');
+    this.validateLength(this.data.placeholder, MAX_PLACEHOLDER_LENGTH, 'placeholder');
     return this.data as APITextInputComponent;
   }
 }

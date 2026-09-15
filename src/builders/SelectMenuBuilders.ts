@@ -20,14 +20,128 @@ import type {
   ExtractCustomId,
   ValidateSelectMenuRequired,
 } from '../utils/guards.ts';
-import { BaseComponent, resolveRaw } from './base.ts';
+import { BaseComponent, resolveRaw, serializeEntries } from './base.ts';
+import { validateOptionFields } from '../utils/OptionValidation.ts';
 
-// Pre-computed constant: avoids allocating a new array on every validateDefaultValues call
-const STD_DEFAULT_VALUE_TYPES = new Set<string>([
+/** Maximum length of a select menu placeholder. */
+const MAX_PLACEHOLDER_LENGTH = 150;
+
+/** Bounds shared by every select menu's `min_values` and `max_values`. */
+const MAX_SELECTED_VALUES = 25;
+
+/** Bounds of a string select menu's option list. */
+const MIN_OPTIONS = 1;
+const MAX_OPTIONS = 25;
+
+/**
+ * Allowed `default_values` types per select menu, frozen at module scope so the
+ * hot validation path never allocates.
+ */
+const USER_DEFAULT_TYPES: readonly string[] = Object.freeze([SelectMenuDefaultValueType.User]);
+const ROLE_DEFAULT_TYPES: readonly string[] = Object.freeze([SelectMenuDefaultValueType.Role]);
+const CHANNEL_DEFAULT_TYPES: readonly string[] = Object.freeze([SelectMenuDefaultValueType.Channel]);
+const MENTIONABLE_DEFAULT_TYPES: readonly string[] = Object.freeze([
   SelectMenuDefaultValueType.User,
   SelectMenuDefaultValueType.Role,
-  SelectMenuDefaultValueType.Channel,
 ]);
+
+/** A select menu default value accepted either as a bare snowflake or a full object. */
+type DefaultValueInput = string | { id: string; type?: SelectMenuDefaultValueType | (string & {}) };
+
+/** The subset of constructor options every select menu shares. */
+interface CommonSelectMenuOptions {
+  customId?: string;
+  custom_id?: string;
+  placeholder?: string;
+  minValues?: number;
+  min_values?: number;
+  maxValues?: number;
+  max_values?: number;
+  required?: boolean;
+  disabled?: boolean;
+}
+
+/**
+ * Validates the options every select menu shares and writes them onto the
+ * payload, skipping unset fields so the serialized payload never carries
+ * `undefined` holes.
+ *
+ * This runs before `super()`, so it lives at module scope rather than on the
+ * class, and it writes straight into the payload to avoid an intermediate
+ * object on the construction hot path.
+ *
+ * @param payload - The payload under construction.
+ * @param opts - The raw constructor options.
+ * @throws If any shared constraint is violated.
+ */
+function initSelectMenuPayload(payload: Record<string, unknown>, opts: CommonSelectMenuOptions): void {
+  const customId = opts.customId ?? opts.custom_id;
+  if (customId !== undefined) {
+    if (customId.length < 1 || customId.length > 100) {
+      throw new Error('customId is invalid, must be between 1 and 100 characters');
+    }
+    payload.custom_id = customId;
+  }
+
+  const minValues = opts.minValues ?? opts.min_values;
+  const maxValues = opts.maxValues ?? opts.max_values;
+  const required = opts.required;
+
+  if (minValues !== undefined) {
+    if (!Number.isInteger(minValues) || minValues < 0 || minValues > MAX_SELECTED_VALUES) {
+      throw new Error(`minValues must be between 0 and ${MAX_SELECTED_VALUES}, but you set it to ${minValues}`);
+    }
+    // Discord defaults `required` to true on select menus, so min_values of 0
+    // only makes sense once the menu is explicitly marked optional.
+    if (minValues === 0 && required !== false) {
+      throw new Error('minValues can only be 0 if required is false');
+    }
+    payload.min_values = minValues;
+  }
+
+  if (maxValues !== undefined) {
+    if (!Number.isInteger(maxValues) || maxValues < 1 || maxValues > MAX_SELECTED_VALUES) {
+      throw new Error(`maxValues must be between 1 and ${MAX_SELECTED_VALUES}, but you set it to ${maxValues}`);
+    }
+    if (minValues !== undefined && minValues > maxValues) {
+      throw new Error(`minValues can't be more than maxValues (you set minValues to ${minValues} and maxValues to ${maxValues})`);
+    }
+    payload.max_values = maxValues;
+  }
+
+  const placeholder = opts.placeholder;
+  if (placeholder !== undefined) {
+    if (placeholder.length > MAX_PLACEHOLDER_LENGTH) {
+      throw new Error(`placeholder is too long, max is ${MAX_PLACEHOLDER_LENGTH} characters but got ${placeholder.length}`);
+    }
+    payload.placeholder = placeholder;
+  }
+
+  if (required !== undefined) payload.required = required;
+  if (opts.disabled !== undefined) payload.disabled = opts.disabled;
+}
+
+/**
+ * Maps snowflakes or partial default value objects to full API default values.
+ *
+ * @param entries - Snowflakes or `{ id, type }` objects.
+ * @param fallbackType - The type applied to entries that do not carry one.
+ * @returns The normalized default values.
+ */
+function toDefaultValues(
+  entries: readonly DefaultValueInput[],
+  fallbackType: SelectMenuDefaultValueType,
+): APISelectMenuDefaultValue[] {
+  const len = entries.length;
+  const values = new Array<APISelectMenuDefaultValue>(len);
+  for (let i = 0; i < len; i++) {
+    const entry = entries[i]!;
+    values[i] = typeof entry === 'string'
+      ? { id: entry, type: fallbackType }
+      : { id: entry.id, type: entry.type ?? fallbackType };
+  }
+  return values;
+}
 
 interface APIBaseSelectMenuComponent {
   type: ComponentType;
@@ -103,8 +217,8 @@ abstract class BaseSelectMenuBuilderClass<
     max: number | undefined,
     required: boolean | undefined = this.data.required,
   ): void {
-    if (min !== undefined) this.validateRange(min, 0, 25, 'minValues');
-    if (max !== undefined) this.validateRange(max, 1, 25, 'maxValues');
+    if (min !== undefined) this.validateRange(min, 0, MAX_SELECTED_VALUES, 'minValues');
+    if (max !== undefined) this.validateRange(max, 1, MAX_SELECTED_VALUES, 'maxValues');
     if (min !== undefined && max !== undefined && min > max) {
       throw new Error(`minValues can't be more than maxValues (you set minValues to ${min} and maxValues to ${max})`);
     }
@@ -113,15 +227,31 @@ abstract class BaseSelectMenuBuilderClass<
     }
   }
 
+  /** Rechecks required fields and mutable bounds before handing out a payload. */
+  protected validateSerialization(): void {
+    this.validateCustomId(this.data.custom_id ?? '');
+    this.validateSelectMenuValues(this.data.min_values, this.data.max_values);
+    this.validateLength(this.data.placeholder, MAX_PLACEHOLDER_LENGTH, 'placeholder');
+  }
+
+  /**
+   * Validates a `default_values` list against this menu's constraints.
+   *
+   * @param vals - The default values to check.
+   * @param allowed - The value types this menu accepts.
+   * @param min - The configured `minValues`, if any.
+   * @param max - The configured `maxValues`, if any.
+   * @throws If the count is out of bounds or a value type is not allowed.
+   */
   protected validateDefaultValues(
     vals: readonly { id: string; type: string }[] | undefined,
-    allowed: string[],
+    allowed: readonly string[],
     min: number | undefined,
     max: number | undefined,
   ): void {
     if (!vals || vals.length === 0) return;
     const count = vals.length;
-    if (count > 25) throw new Error("can't have more than 25 default values");
+    if (count > MAX_SELECTED_VALUES) throw new Error(`can't have more than ${MAX_SELECTED_VALUES} default values`);
     if (min !== undefined && count < min) {
       throw new Error(`default_values count (${count}) is less than minValues (${min})`);
     }
@@ -129,9 +259,9 @@ abstract class BaseSelectMenuBuilderClass<
       throw new Error(`default_values count (${count}) exceeds maxValues (${max})`);
     }
     for (let i = 0; i < count; i++) {
-      const v = vals[i]!;
-      if (STD_DEFAULT_VALUE_TYPES.has(v.type) && !allowed.includes(v.type))
-        throw new Error(`default type "${v.type}" is invalid, must be one of: ${allowed.join(', ')}`);
+      const type = vals[i]!.type;
+      if (!allowed.includes(type))
+        throw new Error(`default type "${type}" is invalid, must be one of: ${allowed.join(', ')}`);
     }
   }
 
@@ -145,7 +275,7 @@ abstract class BaseSelectMenuBuilderClass<
   ): void {
     this.validateCustomId(cid);
     this.validateSelectMenuValues(min, max, required);
-    if (placeholder !== undefined) this.validateLength(placeholder, 150, 'placeholder');
+    if (placeholder !== undefined) this.validateLength(placeholder, MAX_PLACEHOLDER_LENGTH, 'placeholder');
 
     const d = this.data as Record<string, unknown>;
     d.custom_id = cid;
@@ -174,7 +304,7 @@ abstract class BaseSelectMenuBuilderClass<
    * @throws If placeholder exceeds 150 characters
    */
   setPlaceholder(placeholder: CheckMaxLength<string, 150, 'placeholder'>): this {
-    this.validateLength(placeholder, 150, 'placeholder');
+    this.validateLength(placeholder, MAX_PLACEHOLDER_LENGTH, 'placeholder');
     (this.data as Record<string, unknown>).placeholder = placeholder;
     return this;
   }
@@ -508,9 +638,8 @@ type ValidateSelectValues<Opts> =
 /**
  * Validates the generic parameters of generic SelectMenuOptions at compile-time.
  * @template Opts The user configuration options.
- * @template Name Field name for errors.
  */
-export type ValidateSelectMenuOptions<Opts, Name extends string = 'SelectMenu'> =
+export type ValidateSelectMenuOptions<Opts> =
   CheckStringConstraints<GetCustomIdField<Opts>, 1, 100, 'customId'> extends { readonly error: string }
   ? CheckStringConstraints<GetCustomIdField<Opts>, 1, 100, 'customId'>
   : Opts extends { customId: string; custom_id: string }
@@ -532,8 +661,8 @@ export type ValidateSelectMenuOptions<Opts, Name extends string = 'SelectMenu'> 
  * @template Opts The user configuration options.
  */
 export type ValidateStringSelectMenuOptions<Opts> =
-  ValidateSelectMenuOptions<Opts, 'StringSelectMenu'> extends { readonly error: string }
-  ? ValidateSelectMenuOptions<Opts, 'StringSelectMenu'>
+  ValidateSelectMenuOptions<Opts> extends { readonly error: string }
+  ? ValidateSelectMenuOptions<Opts>
   : Opts extends { options: unknown }
   ? [GetStringSelectOptions<Opts>] extends [never]
     ? { readonly error: 'options must be a valid array' }
@@ -580,7 +709,7 @@ export interface StringSelectMenuBuilderInstance<
  * });
  * ```
  *
- * @see {@link https://discord.com/developers/docs/components/reference#string-select Discord Docs - String Select}
+ * @see {@link https://docs.discord.com/developers/components/reference#string-select Discord Docs - String Select}
  */
 class StringSelectMenuBuilderClass extends BaseSelectMenuBuilderClass<Partial<APIStringSelectComponent>> {
   public override readonly type = ComponentType.StringSelect;
@@ -597,9 +726,9 @@ class StringSelectMenuBuilderClass extends BaseSelectMenuBuilderClass<Partial<AP
       customId: raw.custom_id,
     } as unknown as StringSelectMenuOptions<string, string, (TypeSafeSelectMenuOption | StringSelectMenuOptionBuilder)[]>);
     if (raw.placeholder !== undefined) builder.setPlaceholder(raw.placeholder);
+    if (raw.required !== undefined) builder.setRequired(raw.required);
     if (raw.min_values !== undefined) builder.setMinValues(raw.min_values);
     if (raw.max_values !== undefined) builder.setMaxValues(raw.max_values);
-    if (raw.required !== undefined) builder.setRequired(raw.required);
     if (raw.disabled !== undefined) builder.setDisabled(raw.disabled);
     if (raw.options) {
       const optsRaw = raw.options;
@@ -637,54 +766,21 @@ class StringSelectMenuBuilderClass extends BaseSelectMenuBuilderClass<Partial<AP
       return;
     }
 
-    const cid = opts.customId ?? opts.custom_id;
-    if (cid !== undefined) {
-      const cidLen = cid.length;
-      if (cidLen < 1 || cidLen > 100) throw new Error('customId is invalid, must be between 1 and 100 characters');
-    }
-
-    const min = opts.minValues ?? opts.min_values;
-    const max = opts.maxValues ?? opts.max_values;
-    const required = opts.required;
-
-    if (min !== undefined) {
-      if (min < 0 || min > 25) throw new Error(`minValues must be between 0 and 25, but you set it to ${min}`);
-    }
-    if (max !== undefined) {
-      if (max < 1 || max > 25) throw new Error(`maxValues must be between 1 and 25, but you set it to ${max}`);
-    }
-    if (min !== undefined && max !== undefined && min > max) {
-      throw new Error(`minValues can't be more than maxValues (you set minValues to ${min} and maxValues to ${max})`);
-    }
-    if (min === 0 && required !== false) {
-      throw new Error('minValues can only be 0 if required is false');
-    }
-
-    const placeholder = opts.placeholder;
-    if (placeholder !== undefined && placeholder.length > 150) {
-      throw new Error(`placeholder is too long, max is 150 characters but got ${placeholder.length}`);
-    }
-
     const options = opts.options;
     if (options !== undefined) {
       const optLen = options.length;
-      if (optLen < 1 || optLen > 25) {
-        throw new Error(`options needs between 1 and 25 elements, but got ${optLen}`);
+      if (optLen < MIN_OPTIONS || optLen > MAX_OPTIONS) {
+        throw new Error(`options needs between ${MIN_OPTIONS} and ${MAX_OPTIONS} elements, but got ${optLen}`);
       }
     }
 
-    const payload = {
+    const payload: Record<string, unknown> = {
       type: ComponentType.StringSelect,
       options: options ?? [],
-      custom_id: cid,
-      placeholder,
-      min_values: min,
-      max_values: max,
-      required,
-      disabled: opts.disabled,
-    } as unknown as Partial<APIStringSelectComponent>;
+    };
+    initSelectMenuPayload(payload, opts);
 
-    super(payload);
+    super(payload as unknown as Partial<APIStringSelectComponent>);
   }
 
   /**
@@ -740,41 +836,21 @@ class StringSelectMenuBuilderClass extends BaseSelectMenuBuilderClass<Partial<AP
     return this;
   }
 
+  /**
+   * Serializes this string select menu to the raw Discord API payload.
+   * @returns The JSON representation.
+   */
   override toJSON(): APIStringSelectComponent {
-    const rawOpts = this.data.options;
-    let serializedOpts = rawOpts as unknown as APISelectMenuOption[];
-    if (rawOpts) {
-      const len = rawOpts.length;
-      let hasBuilder = false;
-      for (let i = 0; i < len; i++) {
-        const o = rawOpts[i];
-        if (o && typeof (o as unknown as Record<string, unknown>).toJSON === 'function') {
-          hasBuilder = true;
-          break;
-        }
-      }
-      if (hasBuilder) {
-        serializedOpts = new Array<APISelectMenuOption>(len);
-        for (let i = 0; i < len; i++) {
-          const o = rawOpts[i]!;
-          serializedOpts[i] = typeof (o as unknown as Record<string, unknown>).toJSON === 'function'
-            ? (o as unknown as { toJSON(): APISelectMenuOption }).toJSON()
-            : (o as APISelectMenuOption);
-        }
-      }
-    }
+    this.validateSerialization();
     const data = this.data;
-    return {
-      type: ComponentType.StringSelect,
-      options: serializedOpts,
-      custom_id: data.custom_id,
-      placeholder: data.placeholder,
-      min_values: data.min_values,
-      max_values: data.max_values,
-      disabled: data.disabled,
-      required: data.required,
-      id: this.id !== undefined ? this.id : data.id,
-    } as unknown as APIStringSelectComponent;
+    const options = data.options;
+    const serialized = serializeEntries<APISelectMenuOption>(options, validateOptionFields);
+    this.validateArrayLength(serialized, MIN_OPTIONS, MAX_OPTIONS, 'options');
+
+    // Plain option objects are already wire-ready, so nothing has to be copied.
+    if (serialized === (options as unknown)) return data as APIStringSelectComponent;
+
+    return { ...data, options: serialized } as APIStringSelectComponent;
   }
 }
 
@@ -829,7 +905,8 @@ abstract class BaseAutoSelectMenuBuilderClass<
   constructor(data?: TData) {
     super(data);
   }
-  protected abstract get allowedDefaultTypes(): string[];
+  /** The `default_values` types this menu accepts. */
+  protected abstract readonly allowedDefaultTypes: readonly string[];
 
   /**
    * Gets the list of default pre-selected values for this select menu.
@@ -890,43 +967,46 @@ override setMaxValues(max: number): this {
     return this;
   }
 
-  protected addDefaultValuesRaw(
-    entries: readonly APISelectMenuDefaultValue[],
-  ): void {
-    const d = this.data as Record<string, unknown>;
-    if (!d.default_values) d.default_values = [];
-    const existing = d.default_values as APISelectMenuDefaultValue[];
-    const eLen = existing.length;
-    const aLen = entries.length;
-    const newDefaults = new Array<APISelectMenuDefaultValue>(eLen + aLen);
-    for (let i = 0; i < eLen; i++) newDefaults[i] = existing[i]!;
-    for (let i = 0; i < aLen; i++) newDefaults[eLen + i] = entries[i]!;
+  /**
+   * Replaces the default values after validating them.
+   * An empty list clears the field so the payload never carries an empty array.
+   */
+  protected setDefaultValuesRaw(entries: readonly APISelectMenuDefaultValue[]): void {
+    const data = this.data as Record<string, unknown>;
+    if (entries.length === 0) {
+      delete data.default_values;
+      return;
+    }
     this.validateDefaultValues(
-      newDefaults,
+      entries,
       this.allowedDefaultTypes,
       this.data.min_values,
       this.data.max_values,
     );
-    d.default_values = newDefaults;
+    data.default_values = entries;
   }
 
-  protected buildJSON(type: number): Record<string, unknown> {
-    const data = this.data as unknown as Record<string, unknown>;
-    const defs = data.default_values as unknown[];
-    const chanTypes = data.channel_types as unknown[];
-    return {
-      type,
-      custom_id: data.custom_id,
-      placeholder: data.placeholder,
-      min_values: data.min_values,
-      max_values: data.max_values,
-      disabled: data.disabled,
-      required: data.required,
-      default_values: (defs && defs.length > 0) ? defs : undefined,
-      channel_types: (chanTypes && chanTypes.length > 0) ? chanTypes : undefined,
-      id: this.id !== undefined ? this.id : data.id,
-    } as unknown as Record<string, unknown>;
+  /**
+   * Appends default values after validating the resulting list.
+   */
+  protected addDefaultValuesRaw(entries: readonly APISelectMenuDefaultValue[]): void {
+    if (entries.length === 0) return;
+
+    const data = this.data as Record<string, unknown>;
+    const existing = (data.default_values as APISelectMenuDefaultValue[] | undefined) ?? [];
+    const merged = new Array<APISelectMenuDefaultValue>(existing.length + entries.length);
+    for (let i = 0; i < existing.length; i++) merged[i] = existing[i]!;
+    for (let i = 0; i < entries.length; i++) merged[existing.length + i] = entries[i]!;
+
+    this.validateDefaultValues(
+      merged,
+      this.allowedDefaultTypes,
+      this.data.min_values,
+      this.data.max_values,
+    );
+    data.default_values = merged;
   }
+
 }
 
 /**
@@ -987,9 +1067,7 @@ export interface UserSelectMenuBuilderInstance<CustomId extends string>
 class UserSelectMenuBuilderClass extends BaseAutoSelectMenuBuilderClass<Partial<APIUserSelectComponent>> {
   public override readonly type = ComponentType.UserSelect;
 
-  protected get allowedDefaultTypes(): string[] {
-    return [SelectMenuDefaultValueType.User];
-  }
+  protected override readonly allowedDefaultTypes = USER_DEFAULT_TYPES;
 
   /**
    * Recreates a UserSelectMenuBuilder from a raw API payload.
@@ -1003,9 +1081,9 @@ class UserSelectMenuBuilderClass extends BaseAutoSelectMenuBuilderClass<Partial<
       customId: raw.custom_id,
     } as unknown as UserSelectMenuOptions<string, string>);
     if (raw.placeholder !== undefined) builder.setPlaceholder(raw.placeholder);
+    if (raw.required !== undefined) builder.setRequired(raw.required);
     if (raw.min_values !== undefined) builder.setMinValues(raw.min_values);
     if (raw.max_values !== undefined) builder.setMaxValues(raw.max_values);
-    if (raw.required !== undefined) builder.setRequired(raw.required);
     if (raw.disabled !== undefined) builder.setDisabled(raw.disabled);
     if (raw.default_values) builder.setDefaultUsers(raw.default_values);
     if (raw.id !== undefined) builder.setId(raw.id);
@@ -1014,72 +1092,18 @@ class UserSelectMenuBuilderClass extends BaseAutoSelectMenuBuilderClass<Partial<
 
   constructor(opts?: UserSelectMenuOptions<string, string>) {
     if (!opts) {
-      super({
-        type: ComponentType.UserSelect,
-        default_values: [],
-      } as unknown as Partial<APIUserSelectComponent>);
+      super({ type: ComponentType.UserSelect } as unknown as Partial<APIUserSelectComponent>);
       return;
     }
 
-    const cid = opts.customId ?? opts.custom_id;
-    if (cid !== undefined) {
-      const cidLen = cid.length;
-      if (cidLen < 1 || cidLen > 100) throw new Error('customId is invalid, must be between 1 and 100 characters');
-    }
+    const payload: Record<string, unknown> = { type: ComponentType.UserSelect };
+    initSelectMenuPayload(payload, opts);
 
-    const min = opts.minValues ?? opts.min_values;
-    const max = opts.maxValues ?? opts.max_values;
-    const required = opts.required;
-
-    if (min !== undefined) {
-      if (min < 0 || min > 25) throw new Error(`minValues must be between 0 and 25, but you set it to ${min}`);
-    }
-    if (max !== undefined) {
-      if (max < 1 || max > 25) throw new Error(`maxValues must be between 1 and 25, but you set it to ${max}`);
-    }
-    if (min !== undefined && max !== undefined && min > max) {
-      throw new Error(`minValues can't be more than maxValues (you set minValues to ${min} and maxValues to ${max})`);
-    }
-    if (min === 0 && required !== false) {
-      throw new Error('minValues can only be 0 if required is false');
-    }
-
-    const placeholder = opts.placeholder;
-    if (placeholder !== undefined && placeholder.length > 150) {
-      throw new Error(`placeholder is too long, max is 150 characters but got ${placeholder.length}`);
-    }
-
-    const payload = {
-      type: ComponentType.UserSelect,
-      custom_id: cid,
-      placeholder,
-      min_values: min,
-      max_values: max,
-      required,
-      disabled: opts.disabled,
-      default_values: [],
-    } as unknown as Partial<APIUserSelectComponent>;
-
-    super(payload);
+    super(payload as unknown as Partial<APIUserSelectComponent>);
   }
 
   setDefaultUsers(users: readonly (string | { id: string; type?: SelectMenuDefaultValueType | (string & {}) })[]): this {
-    const len = users.length;
-    const vals = new Array<APISelectMenuDefaultValue>(len);
-    for (let i = 0; i < len; i++) {
-      const u = users[i]!;
-      vals[i] = {
-        id: typeof u === 'string' ? u : u.id,
-        type: (typeof u === 'object' && u.type) ? u.type : SelectMenuDefaultValueType.User,
-      };
-    }
-    this.validateDefaultValues(
-      vals,
-      this.allowedDefaultTypes,
-      this.data.min_values,
-      this.data.max_values,
-    );
-    this.data.default_values = vals;
+    this.setDefaultValuesRaw(toDefaultValues(users, SelectMenuDefaultValueType.User));
     return this;
   }
 
@@ -1090,15 +1114,7 @@ class UserSelectMenuBuilderClass extends BaseAutoSelectMenuBuilderClass<Partial<
    * @throws If default values count exceeds 25 or violates min/max constraints
    */
   addDefaultUsers(...users: readonly (string | { id: string; type?: SelectMenuDefaultValueType | (string & {}) })[]): this {
-    const len = users.length;
-    const vals = new Array<APISelectMenuDefaultValue>(len);
-    for (let i = 0; i < len; i++) {
-      const u = users[i]!;
-      vals[i] = {
-        id: typeof u === 'string' ? u : u.id,
-        type: (typeof u === 'object' && u.type) ? u.type : SelectMenuDefaultValueType.User,
-      };
-    }
+    const vals = toDefaultValues(users, SelectMenuDefaultValueType.User);
     this.addDefaultValuesRaw(vals);
     return this;
   }
@@ -1108,7 +1124,8 @@ class UserSelectMenuBuilderClass extends BaseAutoSelectMenuBuilderClass<Partial<
    * @returns The serialized JSON payload structure.
    */
 override toJSON(): APIUserSelectComponent {
-    return this.buildJSON(ComponentType.UserSelect) as unknown as APIUserSelectComponent;
+    this.validateSerialization();
+    return this.data as unknown as APIUserSelectComponent;
   }
 }
 
@@ -1120,7 +1137,7 @@ export const UserSelectMenuBuilder = UserSelectMenuBuilderClass as unknown as {
     MaxValues extends AllowedSelectMenuRange = AllowedSelectMenuRange,
     Opts extends UserSelectMenuOptions<CustomId, Placeholder, MinValues, MaxValues> = UserSelectMenuOptions<CustomId, Placeholder, MinValues, MaxValues>,
   >(
-    opts?: Opts & ValidateSelectMenuOptions<Opts, 'UserSelectMenu'> & ValidateSelectMenuRequired<Opts>,
+    opts?: Opts & ValidateSelectMenuOptions<Opts> & ValidateSelectMenuRequired<Opts>,
   ): UserSelectMenuBuilderInstance<ExtractCustomId<Opts>>;
   from(data: APIUserSelectComponent): UserSelectMenuBuilder;
 };
@@ -1184,9 +1201,7 @@ export interface RoleSelectMenuBuilderInstance<CustomId extends string>
 class RoleSelectMenuBuilderClass extends BaseAutoSelectMenuBuilderClass<Partial<APIRoleSelectComponent>> {
   public override readonly type = ComponentType.RoleSelect;
 
-  protected get allowedDefaultTypes(): string[] {
-    return [SelectMenuDefaultValueType.Role];
-  }
+  protected override readonly allowedDefaultTypes = ROLE_DEFAULT_TYPES;
 
   /**
    * Recreates a RoleSelectMenuBuilder from a raw API payload.
@@ -1200,9 +1215,9 @@ class RoleSelectMenuBuilderClass extends BaseAutoSelectMenuBuilderClass<Partial<
       customId: raw.custom_id,
     } as unknown as RoleSelectMenuOptions<string, string>);
     if (raw.placeholder !== undefined) builder.setPlaceholder(raw.placeholder);
+    if (raw.required !== undefined) builder.setRequired(raw.required);
     if (raw.min_values !== undefined) builder.setMinValues(raw.min_values);
     if (raw.max_values !== undefined) builder.setMaxValues(raw.max_values);
-    if (raw.required !== undefined) builder.setRequired(raw.required);
     if (raw.disabled !== undefined) builder.setDisabled(raw.disabled);
     if (raw.default_values) builder.setDefaultRoles(raw.default_values);
     if (raw.id !== undefined) builder.setId(raw.id);
@@ -1211,72 +1226,18 @@ class RoleSelectMenuBuilderClass extends BaseAutoSelectMenuBuilderClass<Partial<
 
   constructor(opts?: RoleSelectMenuOptions<string, string>) {
     if (!opts) {
-      super({
-        type: ComponentType.RoleSelect,
-        default_values: [],
-      } as unknown as Partial<APIRoleSelectComponent>);
+      super({ type: ComponentType.RoleSelect } as unknown as Partial<APIRoleSelectComponent>);
       return;
     }
 
-    const cid = opts.customId ?? opts.custom_id;
-    if (cid !== undefined) {
-      const cidLen = cid.length;
-      if (cidLen < 1 || cidLen > 100) throw new Error('customId is invalid, must be between 1 and 100 characters');
-    }
+    const payload: Record<string, unknown> = { type: ComponentType.RoleSelect };
+    initSelectMenuPayload(payload, opts);
 
-    const min = opts.minValues ?? opts.min_values;
-    const max = opts.maxValues ?? opts.max_values;
-    const required = opts.required;
-
-    if (min !== undefined) {
-      if (min < 0 || min > 25) throw new Error(`minValues must be between 0 and 25, but you set it to ${min}`);
-    }
-    if (max !== undefined) {
-      if (max < 1 || max > 25) throw new Error(`maxValues must be between 1 and 25, but you set it to ${max}`);
-    }
-    if (min !== undefined && max !== undefined && min > max) {
-      throw new Error(`minValues can't be more than maxValues (you set minValues to ${min} and maxValues to ${max})`);
-    }
-    if (min === 0 && required !== false) {
-      throw new Error('minValues can only be 0 if required is false');
-    }
-
-    const placeholder = opts.placeholder;
-    if (placeholder !== undefined && placeholder.length > 150) {
-      throw new Error(`placeholder is too long, max is 150 characters but got ${placeholder.length}`);
-    }
-
-    const payload = {
-      type: ComponentType.RoleSelect,
-      custom_id: cid,
-      placeholder,
-      min_values: min,
-      max_values: max,
-      required,
-      disabled: opts.disabled,
-      default_values: [],
-    } as unknown as Partial<APIRoleSelectComponent>;
-
-    super(payload);
+    super(payload as unknown as Partial<APIRoleSelectComponent>);
   }
 
   setDefaultRoles(roles: readonly (string | { id: string; type?: SelectMenuDefaultValueType | (string & {}) })[]): this {
-    const len = roles.length;
-    const vals = new Array<APISelectMenuDefaultValue>(len);
-    for (let i = 0; i < len; i++) {
-      const r = roles[i]!;
-      vals[i] = {
-        id: typeof r === 'string' ? r : r.id,
-        type: (typeof r === 'object' && r.type) ? r.type : SelectMenuDefaultValueType.Role,
-      };
-    }
-    this.validateDefaultValues(
-      vals,
-      this.allowedDefaultTypes,
-      this.data.min_values,
-      this.data.max_values,
-    );
-    this.data.default_values = vals;
+    this.setDefaultValuesRaw(toDefaultValues(roles, SelectMenuDefaultValueType.Role));
     return this;
   }
 
@@ -1286,15 +1247,7 @@ class RoleSelectMenuBuilderClass extends BaseAutoSelectMenuBuilderClass<Partial<
    * @returns This builder for chaining.
    */
   addDefaultRoles(...roles: readonly (string | { id: string; type?: SelectMenuDefaultValueType | (string & {}) })[]): this {
-    const len = roles.length;
-    const vals = new Array<APISelectMenuDefaultValue>(len);
-    for (let i = 0; i < len; i++) {
-      const r = roles[i]!;
-      vals[i] = {
-        id: typeof r === 'string' ? r : r.id,
-        type: (typeof r === 'object' && r.type) ? r.type : SelectMenuDefaultValueType.Role,
-      };
-    }
+    const vals = toDefaultValues(roles, SelectMenuDefaultValueType.Role);
     this.addDefaultValuesRaw(vals);
     return this;
   }
@@ -1304,7 +1257,8 @@ class RoleSelectMenuBuilderClass extends BaseAutoSelectMenuBuilderClass<Partial<
    * @returns The serialized JSON payload structure.
    */
 override toJSON(): APIRoleSelectComponent {
-    return this.buildJSON(ComponentType.RoleSelect) as unknown as APIRoleSelectComponent;
+    this.validateSerialization();
+    return this.data as unknown as APIRoleSelectComponent;
   }
 }
 
@@ -1316,7 +1270,7 @@ export const RoleSelectMenuBuilder = RoleSelectMenuBuilderClass as unknown as {
     MaxValues extends AllowedSelectMenuRange = AllowedSelectMenuRange,
     Opts extends RoleSelectMenuOptions<CustomId, Placeholder, MinValues, MaxValues> = RoleSelectMenuOptions<CustomId, Placeholder, MinValues, MaxValues>,
   >(
-    opts?: Opts & ValidateSelectMenuOptions<Opts, 'RoleSelectMenu'> & ValidateSelectMenuRequired<Opts>,
+    opts?: Opts & ValidateSelectMenuOptions<Opts> & ValidateSelectMenuRequired<Opts>,
   ): RoleSelectMenuBuilderInstance<ExtractCustomId<Opts>>;
   from(data: APIRoleSelectComponent): RoleSelectMenuBuilder;
 };
@@ -1380,9 +1334,7 @@ export interface MentionableSelectMenuBuilderInstance<CustomId extends string>
 class MentionableSelectMenuBuilderClass extends BaseAutoSelectMenuBuilderClass<Partial<APIMentionableSelectComponent>> {
   public override readonly type = ComponentType.MentionableSelect;
 
-  protected get allowedDefaultTypes(): string[] {
-    return [SelectMenuDefaultValueType.User, SelectMenuDefaultValueType.Role];
-  }
+  protected override readonly allowedDefaultTypes = MENTIONABLE_DEFAULT_TYPES;
 
   /**
    * Recreates a MentionableSelectMenuBuilder from a raw API payload.
@@ -1396,9 +1348,9 @@ class MentionableSelectMenuBuilderClass extends BaseAutoSelectMenuBuilderClass<P
       customId: raw.custom_id,
     } as unknown as MentionableSelectMenuOptions<string, string>);
     if (raw.placeholder !== undefined) builder.setPlaceholder(raw.placeholder);
+    if (raw.required !== undefined) builder.setRequired(raw.required);
     if (raw.min_values !== undefined) builder.setMinValues(raw.min_values);
     if (raw.max_values !== undefined) builder.setMaxValues(raw.max_values);
-    if (raw.required !== undefined) builder.setRequired(raw.required);
     if (raw.disabled !== undefined) builder.setDisabled(raw.disabled);
     if (raw.default_values) builder.setDefaultValues(raw.default_values);
     if (raw.id !== undefined) builder.setId(raw.id);
@@ -1407,53 +1359,14 @@ class MentionableSelectMenuBuilderClass extends BaseAutoSelectMenuBuilderClass<P
 
   constructor(opts?: MentionableSelectMenuOptions<string, string>) {
     if (!opts) {
-      super({
-        type: ComponentType.MentionableSelect,
-        default_values: [],
-      } as unknown as Partial<APIMentionableSelectComponent>);
+      super({ type: ComponentType.MentionableSelect } as unknown as Partial<APIMentionableSelectComponent>);
       return;
     }
 
-    const cid = opts.customId ?? opts.custom_id;
-    if (cid !== undefined) {
-      const cidLen = cid.length;
-      if (cidLen < 1 || cidLen > 100) throw new Error('customId is invalid, must be between 1 and 100 characters');
-    }
+    const payload: Record<string, unknown> = { type: ComponentType.MentionableSelect };
+    initSelectMenuPayload(payload, opts);
 
-    const min = opts.minValues ?? opts.min_values;
-    const max = opts.maxValues ?? opts.max_values;
-    const required = opts.required;
-
-    if (min !== undefined) {
-      if (min < 0 || min > 25) throw new Error(`minValues must be between 0 and 25, but you set it to ${min}`);
-    }
-    if (max !== undefined) {
-      if (max < 1 || max > 25) throw new Error(`maxValues must be between 1 and 25, but you set it to ${max}`);
-    }
-    if (min !== undefined && max !== undefined && min > max) {
-      throw new Error(`minValues can't be more than maxValues (you set minValues to ${min} and maxValues to ${max})`);
-    }
-    if (min === 0 && required !== false) {
-      throw new Error('minValues can only be 0 if required is false');
-    }
-
-    const placeholder = opts.placeholder;
-    if (placeholder !== undefined && placeholder.length > 150) {
-      throw new Error(`placeholder is too long, max is 150 characters but got ${placeholder.length}`);
-    }
-
-    const payload = {
-      type: ComponentType.MentionableSelect,
-      custom_id: cid,
-      placeholder,
-      min_values: min,
-      max_values: max,
-      required,
-      disabled: opts.disabled,
-      default_values: [],
-    } as unknown as Partial<APIMentionableSelectComponent>;
-
-    super(payload);
+    super(payload as unknown as Partial<APIMentionableSelectComponent>);
   }
 
   /**
@@ -1463,22 +1376,7 @@ class MentionableSelectMenuBuilderClass extends BaseAutoSelectMenuBuilderClass<P
    * @throws If default values count exceeds 25 or violates min/max constraints
    */
   setDefaultValues(values: readonly APISelectMenuDefaultValue[]): this {
-    const len = values.length;
-    const vals = new Array<APISelectMenuDefaultValue>(len);
-    for (let i = 0; i < len; i++) {
-      const v = values[i]!;
-      vals[i] = {
-        id: v.id,
-        type: v.type,
-      };
-    }
-    this.validateDefaultValues(
-      vals,
-      this.allowedDefaultTypes,
-      this.data.min_values,
-      this.data.max_values,
-    );
-    this.data.default_values = vals;
+    this.setDefaultValuesRaw(toDefaultValues(values, SelectMenuDefaultValueType.User));
     return this;
   }
 
@@ -1499,15 +1397,7 @@ class MentionableSelectMenuBuilderClass extends BaseAutoSelectMenuBuilderClass<P
    * @returns This builder for chaining.
    */
   addDefaultUsers(...users: readonly (string | { id: string })[]): this {
-    const len = users.length;
-    const vals = new Array<APISelectMenuDefaultValue>(len);
-    for (let i = 0; i < len; i++) {
-      const u = users[i]!;
-      vals[i] = {
-        id: typeof u === 'string' ? u : u.id,
-        type: 'user' as const,
-      };
-    }
+    const vals = toDefaultValues(users, SelectMenuDefaultValueType.User);
     this.addDefaultValuesRaw(vals);
     return this;
   }
@@ -1518,15 +1408,7 @@ class MentionableSelectMenuBuilderClass extends BaseAutoSelectMenuBuilderClass<P
    * @returns This builder for chaining.
    */
   addDefaultRoles(...roles: readonly (string | { id: string })[]): this {
-    const len = roles.length;
-    const vals = new Array<APISelectMenuDefaultValue>(len);
-    for (let i = 0; i < len; i++) {
-      const r = roles[i]!;
-      vals[i] = {
-        id: typeof r === 'string' ? r : r.id,
-        type: 'role' as const,
-      };
-    }
+    const vals = toDefaultValues(roles, SelectMenuDefaultValueType.Role);
     this.addDefaultValuesRaw(vals);
     return this;
   }
@@ -1536,7 +1418,8 @@ class MentionableSelectMenuBuilderClass extends BaseAutoSelectMenuBuilderClass<P
    * @returns The serialized JSON payload structure.
    */
 override toJSON(): APIMentionableSelectComponent {
-    return this.buildJSON(ComponentType.MentionableSelect) as unknown as APIMentionableSelectComponent;
+    this.validateSerialization();
+    return this.data as unknown as APIMentionableSelectComponent;
   }
 }
 
@@ -1549,7 +1432,7 @@ export const MentionableSelectMenuBuilder =
       MaxValues extends AllowedSelectMenuRange = AllowedSelectMenuRange,
       Opts extends MentionableSelectMenuOptions<CustomId, Placeholder, MinValues, MaxValues> = MentionableSelectMenuOptions<CustomId, Placeholder, MinValues, MaxValues>,
     >(
-      opts?: Opts & ValidateSelectMenuOptions<Opts, 'MentionableSelectMenu'> & ValidateSelectMenuRequired<Opts>,
+      opts?: Opts & ValidateSelectMenuOptions<Opts> & ValidateSelectMenuRequired<Opts>,
     ): MentionableSelectMenuBuilderInstance<ExtractCustomId<Opts>>;
     from(data: APIMentionableSelectComponent): MentionableSelectMenuBuilder;
   };
@@ -1618,9 +1501,7 @@ export interface ChannelSelectMenuBuilderInstance<CustomId extends string>
 class ChannelSelectMenuBuilderClass extends BaseAutoSelectMenuBuilderClass<Partial<APIChannelSelectComponent>> {
   public override readonly type = ComponentType.ChannelSelect;
 
-  protected get allowedDefaultTypes(): string[] {
-    return [SelectMenuDefaultValueType.Channel];
-  }
+  protected override readonly allowedDefaultTypes = CHANNEL_DEFAULT_TYPES;
 
   /**
    * Recreates a ChannelSelectMenuBuilder from a raw API payload.
@@ -1634,9 +1515,9 @@ class ChannelSelectMenuBuilderClass extends BaseAutoSelectMenuBuilderClass<Parti
       customId: raw.custom_id,
     } as unknown as ChannelSelectMenuOptions<string, string>);
     if (raw.placeholder !== undefined) builder.setPlaceholder(raw.placeholder);
+    if (raw.required !== undefined) builder.setRequired(raw.required);
     if (raw.min_values !== undefined) builder.setMinValues(raw.min_values);
     if (raw.max_values !== undefined) builder.setMaxValues(raw.max_values);
-    if (raw.required !== undefined) builder.setRequired(raw.required);
     if (raw.disabled !== undefined) builder.setDisabled(raw.disabled);
     if (raw.channel_types) builder.setChannelTypes(raw.channel_types);
     if (raw.default_values) builder.setDefaultChannels(raw.default_values);
@@ -1654,56 +1535,17 @@ class ChannelSelectMenuBuilderClass extends BaseAutoSelectMenuBuilderClass<Parti
 
   constructor(opts?: ChannelSelectMenuOptions<string, string>) {
     if (!opts) {
-      super({
-        type: ComponentType.ChannelSelect,
-        default_values: [],
-      } as unknown as Partial<APIChannelSelectComponent>);
+      super({ type: ComponentType.ChannelSelect } as unknown as Partial<APIChannelSelectComponent>);
       return;
     }
 
-    const cid = opts.customId ?? opts.custom_id;
-    if (cid !== undefined) {
-      const cidLen = cid.length;
-      if (cidLen < 1 || cidLen > 100) throw new Error('customId is invalid, must be between 1 and 100 characters');
-    }
-
-    const min = opts.minValues ?? opts.min_values;
-    const max = opts.maxValues ?? opts.max_values;
-    const required = opts.required;
-
-    if (min !== undefined) {
-      if (min < 0 || min > 25) throw new Error(`minValues must be between 0 and 25, but you set it to ${min}`);
-    }
-    if (max !== undefined) {
-      if (max < 1 || max > 25) throw new Error(`maxValues must be between 1 and 25, but you set it to ${max}`);
-    }
-    if (min !== undefined && max !== undefined && min > max) {
-      throw new Error(`minValues can't be more than maxValues (you set minValues to ${min} and maxValues to ${max})`);
-    }
-    if (min === 0 && required !== false) {
-      throw new Error('minValues can only be 0 if required is false');
-    }
-
-    const placeholder = opts.placeholder;
-    if (placeholder !== undefined && placeholder.length > 150) {
-      throw new Error(`placeholder is too long, max is 150 characters but got ${placeholder.length}`);
-    }
+    const payload: Record<string, unknown> = { type: ComponentType.ChannelSelect };
+    initSelectMenuPayload(payload, opts);
 
     const types = opts.channelTypes ?? opts.channel_types;
+    if (types !== undefined) payload.channel_types = types.slice();
 
-    const payload = {
-      type: ComponentType.ChannelSelect,
-      custom_id: cid,
-      placeholder,
-      min_values: min,
-      max_values: max,
-      required,
-      disabled: opts.disabled,
-      default_values: [],
-      channel_types: types as ChannelType[],
-    } as unknown as Partial<APIChannelSelectComponent>;
-
-    super(payload);
+    super(payload as unknown as Partial<APIChannelSelectComponent>);
   }
 
   /**
@@ -1712,7 +1554,11 @@ class ChannelSelectMenuBuilderClass extends BaseAutoSelectMenuBuilderClass<Parti
    * @returns This builder instance
    */
   setChannelTypes(channelTypes: readonly ChannelType[]): this {
-    this.data.channel_types = channelTypes as ChannelType[];
+    if (channelTypes.length === 0) {
+      delete this.data.channel_types;
+      return this;
+    }
+    this.data.channel_types = channelTypes.slice();
     return this;
   }
 
@@ -1722,9 +1568,14 @@ class ChannelSelectMenuBuilderClass extends BaseAutoSelectMenuBuilderClass<Parti
    * @returns This builder for chaining.
    */
   addChannelTypes(...channelTypes: readonly ChannelType[]): this {
-    if (!Array.isArray(this.data.channel_types))
-      this.data.channel_types = [];
-    this.data.channel_types.push(...channelTypes);
+    if (channelTypes.length === 0) return this;
+
+    let current = this.data.channel_types;
+    if (!Array.isArray(current)) {
+      current = [];
+      this.data.channel_types = current;
+    }
+    for (let i = 0; i < channelTypes.length; i++) current.push(channelTypes[i]!);
     return this;
   }
 
@@ -1734,22 +1585,7 @@ class ChannelSelectMenuBuilderClass extends BaseAutoSelectMenuBuilderClass<Parti
    * @returns This builder for chaining.
    */
   setDefaultChannels(channels: readonly (string | { id: string; type?: SelectMenuDefaultValueType | (string & {}) })[]): this {
-    const len = channels.length;
-    const vals = new Array<APISelectMenuDefaultValue>(len);
-    for (let i = 0; i < len; i++) {
-      const c = channels[i]!;
-      vals[i] = {
-        id: typeof c === 'string' ? c : c.id,
-        type: (typeof c === 'object' && c.type) ? c.type : SelectMenuDefaultValueType.Channel,
-      };
-    }
-    this.validateDefaultValues(
-      vals,
-      this.allowedDefaultTypes,
-      this.data.min_values,
-      this.data.max_values,
-    );
-    this.data.default_values = vals;
+    this.setDefaultValuesRaw(toDefaultValues(channels, SelectMenuDefaultValueType.Channel));
     return this;
   }
 
@@ -1759,15 +1595,7 @@ class ChannelSelectMenuBuilderClass extends BaseAutoSelectMenuBuilderClass<Parti
    * @returns This builder for chaining.
    */
   addDefaultChannels(...channels: readonly (string | { id: string; type?: SelectMenuDefaultValueType | (string & {}) })[]): this {
-    const len = channels.length;
-    const vals = new Array<APISelectMenuDefaultValue>(len);
-    for (let i = 0; i < len; i++) {
-      const c = channels[i]!;
-      vals[i] = {
-        id: typeof c === 'string' ? c : c.id,
-        type: (typeof c === 'object' && c.type) ? c.type : SelectMenuDefaultValueType.Channel,
-      };
-    }
+    const vals = toDefaultValues(channels, SelectMenuDefaultValueType.Channel);
     this.addDefaultValuesRaw(vals);
     return this;
   }
@@ -1777,7 +1605,8 @@ class ChannelSelectMenuBuilderClass extends BaseAutoSelectMenuBuilderClass<Parti
    * @returns The serialized JSON payload structure.
    */
 override toJSON(): APIChannelSelectComponent {
-    return this.buildJSON(ComponentType.ChannelSelect) as unknown as APIChannelSelectComponent;
+    this.validateSerialization();
+    return this.data as unknown as APIChannelSelectComponent;
   }
 }
 
@@ -1790,7 +1619,7 @@ export const ChannelSelectMenuBuilder =
       MaxValues extends AllowedSelectMenuRange = AllowedSelectMenuRange,
       Opts extends ChannelSelectMenuOptions<CustomId, Placeholder, MinValues, MaxValues> = ChannelSelectMenuOptions<CustomId, Placeholder, MinValues, MaxValues>,
     >(
-      opts?: Opts & ValidateSelectMenuOptions<Opts, 'ChannelSelectMenu'> & ValidateSelectMenuRequired<Opts>,
+      opts?: Opts & ValidateSelectMenuOptions<Opts> & ValidateSelectMenuRequired<Opts>,
     ): ChannelSelectMenuBuilderInstance<ExtractCustomId<Opts>>;
     from(data: APIChannelSelectComponent): ChannelSelectMenuBuilder;
   };
@@ -1800,4 +1629,3 @@ export type ChannelSelectMenuBuilder = ChannelSelectMenuBuilderClass;
 export const SelectMenuBuilder = StringSelectMenuBuilder;
 /** @deprecated Use StringSelectMenuBuilder instead */
 export type SelectMenuBuilder = StringSelectMenuBuilder;
-

@@ -1,144 +1,24 @@
-import { ActionRowBuilder as DjsActionRowBuilder, ButtonBuilder as DjsButtonBuilder, StringSelectMenuBuilder as DjsStringSelectMenuBuilder } from '@discordjs/builders';
-import { ButtonStyle as DjsButtonStyle } from 'discord-api-types/v10';
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } from '../src/index.ts';
+import { runBuilderBenchmark } from './benchmarks/BuilderBenchmark.ts';
 
-const ITERATIONS = 50000;
-const TRIALS = 5;
-
-let djsInstSum = 0;
-let djsSerSum = 0;
-let oursInstSum = 0;
-let oursSerSum = 0;
-
-for (let trial = 0; trial < 2; trial++) {
-  const djsRows: unknown[] = [];
-  for (let i = 0; i < 5000; i++) {
-    djsRows.push(
-      new DjsActionRowBuilder().addComponents(
-        new DjsButtonBuilder().setCustomId(`btn_${i}`).setLabel('Click me').setStyle(DjsButtonStyle.Primary),
-        new DjsStringSelectMenuBuilder().setCustomId(`select_${i}`).setPlaceholder('Choose something').addOptions({ label: 'Option 1', value: 'opt_1' })
-      )
-    );
-  }
-  for (let i = 0; i < 5000; i++) {
-    (djsRows[i] as { toJSON(): unknown }).toJSON();
-  }
-
-  const ourRows: unknown[] = [];
-  for (let i = 0; i < 5000; i++) {
-    ourRows.push(
-      new ActionRowBuilder({
-        components: [
-          new ButtonBuilder({ customId: `btn_${i}`, label: 'Click me', style: ButtonStyle.Primary }),
-          new StringSelectMenuBuilder({
-            customId: `select_${i}`,
-            placeholder: 'Choose something',
-            options: [{ label: 'Option 1', value: 'opt_1' }],
-          }),
-        ],
-      })
-    );
-  }
-  for (let i = 0; i < 5000; i++) {
-    (ourRows[i] as { toJSON(): unknown }).toJSON();
-  }
-}
-
-for (let trial = 0; trial < TRIALS; trial++) {
-  const startDjsInst = performance.now();
-  const djsRows: DjsActionRowBuilder<DjsButtonBuilder | DjsStringSelectMenuBuilder>[] = [];
-  for (let i = 0; i < ITERATIONS; i++) {
-    const row = new DjsActionRowBuilder<DjsButtonBuilder | DjsStringSelectMenuBuilder>()
-      .addComponents(
-        new DjsButtonBuilder()
-          .setCustomId(`btn_${i}`)
-          .setLabel('Click me')
-          .setStyle(DjsButtonStyle.Primary),
-        new DjsStringSelectMenuBuilder()
-          .setCustomId(`select_${i}`)
-          .setPlaceholder('Choose something')
-          .addOptions({
-            label: 'Option 1',
-            value: 'opt_1',
-          })
-      );
-    djsRows.push(row);
-  }
-  const endDjsInst = performance.now();
-  djsInstSum += (endDjsInst - startDjsInst);
-
-  const startDjsSer = performance.now();
-  for (let i = 0; i < ITERATIONS; i++) {
-    djsRows[i].toJSON();
-  }
-  const endDjsSer = performance.now();
-  djsSerSum += (endDjsSer - startDjsSer);
-
-  const startOursInst = performance.now();
-  const ourRows: ActionRowBuilder[] = [];
-  for (let i = 0; i < ITERATIONS; i++) {
-    const row = new ActionRowBuilder({
-      components: [
-        new ButtonBuilder({
-          customId: `btn_${i}`,
-          label: 'Click me',
-          style: ButtonStyle.Primary,
-        }),
-        new StringSelectMenuBuilder({
-          customId: `select_${i}`,
-          placeholder: 'Choose something',
-          options: [
-            {
-              label: 'Option 1',
-              value: 'opt_1',
-            },
-          ],
-        }),
-      ],
-    });
-    ourRows.push(row);
-  }
-  const endOursInst = performance.now();
-  oursInstSum += (endOursInst - startOursInst);
-
-  const startOursSer = performance.now();
-  for (let i = 0; i < ITERATIONS; i++) {
-    ourRows[i].toJSON();
-  }
-  const endOursSer = performance.now();
-  oursSerSum += (endOursSer - startOursSer);
-}
-
-const djsInst = djsInstSum / TRIALS;
-const djsSer = djsSerSum / TRIALS;
-const oursInst = oursInstSum / TRIALS;
-const oursSer = oursSerSum / TRIALS;
-
-const djsTot = djsInst + djsSer;
-const oursTot = oursInst + oursSer;
-
+const { discord, buncord, iterations } = runBuilderBenchmark();
+const djsInst = discord.construction;
+const djsSer = discord.conversion;
+const djsTot = discord.combined;
+const oursInst = buncord.construction;
+const oursSer = buncord.conversion;
+const oursTot = buncord.combined;
 const instSpeed = djsInst / oursInst;
 const serSpeed = djsSer / oursSer;
 const totSpeed = djsTot / oursTot;
 
-console.log(`[Instantiation] @discordjs/builders : ${djsInst.toFixed(2)} ms`);
-console.log(`[Instantiation] @buncord/builders : ${oursInst.toFixed(2)} ms`);
-console.log(`Ratio Instantiation                 : ${instSpeed.toFixed(1)}x faster!`);
-console.log(`\n[Serialization] @discordjs/builders : ${djsSer.toFixed(2)} ms`);
-console.log(`[Serialization] @buncord/builders : ${oursSer.toFixed(2)} ms`);
-console.log(`Ratio Serialization                 : ${serSpeed.toFixed(1)}x faster!`);
-console.log(`\n[Total] @discordjs/builders         : ${djsTot.toFixed(2)} ms`);
-console.log(`[Total] @buncord/builders         : ${oursTot.toFixed(2)} ms`);
-console.log(`Ratio Total                         : ${totSpeed.toFixed(1)}x faster!\n`);
-
 const isCI = process.env.CI === 'true' || !!process.env.GITHUB_ACTIONS;
 
 if (!isCI) {
-  console.log("Not running in GITHUB ACTIONS/CI environment. SVG and README changes skipped.");
+  console.log("Not running in GITHUB ACTIONS/CI environment. SVG generation skipped.");
   process.exit(0);
 }
 
-console.log("CI run detected. Re-generating benchmark.svg and README.md...");
+console.log("CI run detected. Re-generating benchmark SVG assets...");
 
 const maxVal = Math.max(djsInst, djsSer, djsTot, oursInst, oursSer, oursTot);
 const maxBarHeight = 220;
@@ -186,8 +66,13 @@ const xOursTotLbl  = cTot  + 33;
 
 const logoSvg = await Bun.file("assets/logo.svg").text();
 const logoMatch = logoSvg.match(/<svg[^>]*>([\s\S]*?)<\/svg>/);
-const logoContent = logoMatch ? logoMatch[1] : "";
-const cleanLogoContent = logoContent.replace(/<defs>[\s\S]*?<\/defs>/, "");
+const logoContent = logoMatch?.[1] ?? "";
+// The logo's own <defs> are re-declared by this template, so strip them. The
+// blur filter they carried is gone, and a dangling filter reference would stop
+// the element from rendering at all, so drop those references too.
+const cleanLogoContent = logoContent
+  .replace(/<defs>[\s\S]*?<\/defs>/, "")
+  .replace(/ filter="url\(#svg_14_blur\)"/g, "");
 
 const delay = 0.9;
 
@@ -196,9 +81,6 @@ const svgTemplate = `<svg width="800" height="460" viewBox="0 0 800 460" fill="n
     <clipPath id="avatarClip">
       <circle cx="3061.172" cy="364" r="335" id="svg_1"/>
     </clipPath>
-    <filter id="svg_14_blur" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="2.1"/>
-    </filter>
     <linearGradient id="grad-ours" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="#FF3B92"/>
       <stop offset="100%" stop-color="#FF85B6"/>
@@ -207,14 +89,6 @@ const svgTemplate = `<svg width="800" height="460" viewBox="0 0 800 460" fill="n
       <stop offset="0%" stop-color="#4E5154"/>
       <stop offset="100%" stop-color="#2B2D2F"/>
     </linearGradient>
-    <filter id="glow-ours" x="-30%" y="-30%" width="160%" height="160%">
-      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#FF3B92" flood-opacity="0.25"/>
-    </filter>
-    <filter id="glow-pulse" x="-40%" y="-40%" width="180%" height="180%">
-      <feDropShadow dx="0" dy="4" stdDeviation="10" flood-color="#FF3B92">
-        <animate attributeName="flood-opacity" values="0.18;0.55;0.18" dur="2.4s" begin="${1.3 + delay}s" repeatCount="indefinite"/>
-      </feDropShadow>
-    </filter>
   </defs>
 
   <style>
@@ -227,7 +101,6 @@ const svgTemplate = `<svg width="800" height="460" viewBox="0 0 800 460" fill="n
     .val-ours { font-size: 12px; font-weight: 800; fill: #FF85B6; text-anchor: middle; }
     .footer-text { font-size: 10px; font-weight: 500; fill: #8b949e; }
 
-    /* ── Bar grow-up from baseline ── */
     @keyframes growBar {
       from { transform: scaleY(0); }
       to   { transform: scaleY(1); }
@@ -238,7 +111,6 @@ const svgTemplate = `<svg width="800" height="460" viewBox="0 0 800 460" fill="n
       animation: growBar 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
     }
 
-    /* ── Fade-in for labels and titles ── */
     @keyframes fadeIn {
       from { opacity: 0; }
       to   { opacity: 1; }
@@ -247,7 +119,6 @@ const svgTemplate = `<svg width="800" height="460" viewBox="0 0 800 460" fill="n
       animation: fadeIn 0.4s ease-out both;
     }
 
-    /* ── Pop-in spring for speed badges ── */
     @keyframes popIn {
       0%   { opacity: 0; transform: scale(0.55); }
       65%  { transform: scale(1.12); }
@@ -287,7 +158,7 @@ const svgTemplate = `<svg width="800" height="460" viewBox="0 0 800 460" fill="n
   <path class="bar-grow" style="animation-delay:${0 + delay}s" d="${pathDjsInst}" fill="url(#grad-djs)"/>
 
   <text x="${xOursInstLbl}" y="${yOursInst - 8}" class="font-base val-ours fade-in" style="animation-delay:${0.7 + delay}s">${oursInst.toFixed(1)}ms</text>
-  <path class="bar-grow" style="animation-delay:${0.1 + delay}s" d="${pathOursInst}" fill="url(#grad-ours)" filter="url(#glow-pulse)"/>
+  <path class="bar-grow" style="animation-delay:${0.1 + delay}s" d="${pathOursInst}" fill="url(#grad-ours)"/>
 
   <text x="${cSer}" y="385" class="font-base group-title fade-in" style="animation-delay:${1.1 + delay}s">Serialization</text>
   <g class="badge-pop" style="animation-delay:${1.25 + delay}s">
@@ -299,7 +170,7 @@ const svgTemplate = `<svg width="800" height="460" viewBox="0 0 800 460" fill="n
   <path class="bar-grow" style="animation-delay:${0.2 + delay}s" d="${pathDjsSer}" fill="url(#grad-djs)"/>
 
   <text x="${xOursSerLbl}" y="${yOursSer - 8}" class="font-base val-ours fade-in" style="animation-delay:${0.9 + delay}s">${oursSer.toFixed(1)}ms</text>
-  <path class="bar-grow" style="animation-delay:${0.3 + delay}s" d="${pathOursSer}" fill="url(#grad-ours)" filter="url(#glow-pulse)"/>
+  <path class="bar-grow" style="animation-delay:${0.3 + delay}s" d="${pathOursSer}" fill="url(#grad-ours)"/>
 
   <text x="${cTot}" y="385" class="font-base group-title fade-in" style="animation-delay:${1.15 + delay}s">Total Time</text>
   <g class="badge-pop" style="animation-delay:${1.3 + delay}s">
@@ -311,7 +182,7 @@ const svgTemplate = `<svg width="800" height="460" viewBox="0 0 800 460" fill="n
   <path class="bar-grow" style="animation-delay:${0.4 + delay}s" d="${pathDjsTot}" fill="url(#grad-djs)"/>
 
   <text x="${xOursTotLbl}" y="${yOursTot - 8}" class="font-base val-ours fade-in" style="animation-delay:${1.1 + delay}s">${oursTot.toFixed(1)}ms</text>
-  <path class="bar-grow" style="animation-delay:${0.5 + delay}s" d="${pathOursTot}" fill="url(#grad-ours)" filter="url(#glow-pulse)"/>
+  <path class="bar-grow" style="animation-delay:${0.5 + delay}s" d="${pathOursTot}" fill="url(#grad-ours)"/>
 </svg>`;
 
 await Bun.write("assets/benchmark.svg", svgTemplate);
@@ -323,9 +194,6 @@ const speedBadgeSvg = `<svg width="220" height="28" viewBox="0 0 220 28" fill="n
       <stop offset="0%" stop-color="#FF3B92"/>
       <stop offset="100%" stop-color="#FF85B6"/>
     </linearGradient>
-    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#FF3B92" flood-opacity="0.3"/>
-    </filter>
   </defs>
   <rect x="0.5" y="0.5" width="219" height="27" rx="6" fill="#18191c" stroke="#30363d" stroke-width="1"/>
   <!-- Left Side Label -->
@@ -333,52 +201,44 @@ const speedBadgeSvg = `<svg width="220" height="28" viewBox="0 0 220 28" fill="n
   <!-- Divider -->
   <line x1="110" y1="4" x2="110" y2="24" stroke="#30363d" stroke-width="1"/>
   <!-- Right Side Value -->
-  <rect x="116" y="5" width="98" height="18" rx="4" fill="url(#grad-ours)" filter="url(#glow)"/>
+  <rect x="116" y="5" width="98" height="18" rx="4" fill="url(#grad-ours)"/>
   <text x="165" y="17" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="800" fill="#ffffff" text-anchor="middle" letter-spacing="0.5">~${totSpeed.toFixed(1)}x FASTER</text>
 </svg>`;
 
 await Bun.write("assets/badge-speed.svg", speedBadgeSvg);
 console.log("Updated assets/badge-speed.svg successfully.");
 
+// Preserve the curated README around the section owned by the CI benchmark.
+const readmeFile = Bun.file('README.md');
+const readme = await readmeFile.text();
+const startMarker = '## Benchmarks';
+const endMarker = '## Component Architecture';
+const start = readme.indexOf(startMarker);
+const end = readme.indexOf(endMarker, start + startMarker.length);
+if (start < 0 || end < 0) throw new Error('README benchmark section markers are missing');
+const discordPackage = await Bun.file(new URL('../node_modules/@discordjs/builders/package.json', import.meta.url)).json() as { version: string };
+const section = `
 
-const readmeContent = await Bun.file("README.md").text();
-const startMarker = "## Benchmarks";
-const endMarker = "## Component Architecture";
+**Measure the workload you actually send.** \`toJSON()\` produces a JavaScript object; encoding it with \`JSON.stringify()\` is a separate cost.
 
-const startIdx = readmeContent.indexOf(startMarker);
-const endIdx = readmeContent.indexOf(endMarker);
+Sample generated on **${new Date().toISOString().slice(0, 10)} · Bun ${Bun.version} · ${process.platform} ${process.arch}**. Each trial builds **${iterations * 2} rows**: ${iterations} with one button and ${iterations} with one string select. The script warms up each library, alternates their order and reports measured medians and ranges. See the console output for trial counts and the CPU model. Installed comparison: \`@discordjs/builders ${discordPackage.version}\`.
 
-if (startIdx !== -1 && endIdx !== -1) {
-  const before = readmeContent.substring(0, startIdx + startMarker.length);
-  const after = readmeContent.substring(endIdx);
-  const percentage = Math.round((totSpeed - 1) * 100);
+| Work for ${iterations * 2} rows | \`@discordjs/builders\` | \`@buncord/builders\` |
+| :--- | ---: | ---: |
+| Construction | ${djsInst.toFixed(2)} ms | ${oursInst.toFixed(2)} ms |
+| Conversion with \`toJSON()\` | ${djsSer.toFixed(2)} ms | ${oursSer.toFixed(2)} ms |
+| Construction + conversion | ${djsTot.toFixed(2)} ms | **${oursTot.toFixed(2)} ms** |
+| JSON encoding | ${discord.encoding.toFixed(2)} ms | ${buncord.encoding.toFixed(2)} ms |
+| Construction + conversion + encoding | ${discord.total.toFixed(2)} ms | **${buncord.total.toFixed(2)} ms** |
 
-  const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'long', day: 'numeric' };
-  const formattedDate = new Date().toLocaleDateString('en-US', options);
+That is approximately **${totSpeed.toFixed(1)}× throughput** for construction and conversion on this sample, or **${(oursTot * 1000 / (iterations * 2)).toFixed(3)} µs per row**. Phase medians need not sum to the total median. Payload equality is checked before timing and encoded outputs are consumed. This excludes HTTP and Discord processing. Hardware, GC, runtime, payload and validation behavior affect results; this is not a latency guarantee or an equivalent-validation comparison.
 
-  const newSection = `
+\`\`\`sh
+bun run benchmark:ci
+\`\`\`
 
-This package is optimized for speed. It runs close to 0ms overhead by using direct manual loops and avoiding heavy validation schemas. 
-
-![Benchmark Graph](./assets/benchmark.svg)
-
-> [!TIP]
-> **Performance Boost:** With over **${totSpeed.toFixed(1)}x performance** (more than ${percentage}% faster processing), \`@buncord/builders\` eliminates instantiation and serialization bottlenecks entirely, running close to 0ms overhead.
-
-Below are the detailed results comparing **50,000 iterations** of component construction and serialization against \`@discordjs/builders\`.
-
-*Last Benchmarked: ${formattedDate}*
-
-| Task | \`@discordjs/builders\` | \`@buncord/builders\` | Speed Comparison |
-| :--- | :--- | :--- | :---: |
-| **Instantiation** | ~${djsInst.toFixed(1)} ms | **~${oursInst.toFixed(1)} ms** | **${instSpeed.toFixed(1)}x faster** |
-| **Serialization** | ~${djsSer.toFixed(1)} ms | **~${oursSer.toFixed(1)} ms** | **${serSpeed.toFixed(1)}x faster** |
-| **Total** | ~${djsTot.toFixed(1)} ms | **~${oursTot.toFixed(1)} ms** | **${totSpeed.toFixed(1)}x faster** |
+For repeated static messages, build the payload and JSON body once and reuse them. A displayed \`0.00 ms\` is rounding, not zero work.
 
 `;
-
-  await Bun.write("README.md", before + newSection + after);
-  console.log("Updated README.md successfully.");
-} else {
-  console.error("Could not find Benchmark section markers in README.md");
-}
+await Bun.write(readmeFile, readme.slice(0, start + startMarker.length) + section + readme.slice(end));
+console.log('Updated the README benchmark section; surrounding content preserved.');

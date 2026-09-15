@@ -61,7 +61,7 @@ export interface CheckboxBuilderInstance<CustomId extends string>
  * });
  * ```
  *
- * @see {@link https://discord.com/developers/docs/components/reference#checkbox Checkbox Discord Docs}
+ * @see {@link https://docs.discord.com/developers/components/reference#checkbox Checkbox Discord Docs}
  */
 class CheckboxBuilderClass extends BaseComponent<Partial<APICheckboxComponent>> {
   public override readonly type = ComponentType.Checkbox;
@@ -141,12 +141,11 @@ class CheckboxBuilderClass extends BaseComponent<Partial<APICheckboxComponent>> 
    *
    * @returns The JSON representation.
    *
-   * @see {@link https://discord.com/developers/docs/components/reference#checkbox Checkbox Discord Doc}
+   * @see {@link https://docs.discord.com/developers/components/reference#checkbox Checkbox Discord Doc}
    */
   override toJSON(): APICheckboxComponent {
-    if (this.id !== undefined) {
-      (this.data as Record<string, unknown>).id = this.id;
-    }
+    if (this.data.custom_id === undefined) throw new Error('customId is required');
+    this.validateCustomId(this.data.custom_id);
     return this.data as APICheckboxComponent;
   }
 }

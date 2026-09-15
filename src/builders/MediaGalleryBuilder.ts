@@ -1,13 +1,23 @@
 import { ComponentType } from '../enums.ts';
 import type { APIMediaGalleryComponent, APIMediaGalleryItem } from '../types.ts';
 import type { CheckArrayLength, CheckMediaUrl, CheckMaxLength } from '../utils/guards.ts';
-import { BaseComponent, resolveRaw } from './base.ts';
+import { BaseComponent, resolveRaw, serializeEntries } from './base.ts';
+
+/** Bounds of a media gallery's item list. */
+const MIN_ITEMS = 1;
+const MAX_ITEMS = 10;
+
+/** Maximum length of an unfurled media item URL. */
+const MAX_MEDIA_URL_LENGTH = 2048;
+
+/** Maximum length of the alt text description. */
+const MAX_DESCRIPTION_LENGTH = 1024;
 
 /**
  * Config options for a new MediaGalleryItemBuilder.
  */
 export interface MediaGalleryItemOptions {
-  /** Media URL - `http://`, `https://`, or `attachment://` scheme. */
+  /** Media URL (`http://`, `https://` or `attachment://` scheme, max 2048 characters). */
   url?: string;
   /** Alt description text (up to 1024 chars). */
   description?: string;
@@ -29,8 +39,8 @@ export type ValidateMediaGalleryItemOptions<Url extends string, Description exte
       : unknown)
   : CheckMediaUrl<Url> extends { readonly error: string }
   ? CheckMediaUrl<Url>
-  : CheckMaxLength<Url, 512, 'url'> extends { readonly error: string }
-  ? CheckMaxLength<Url, 512, 'url'>
+  : CheckMaxLength<Url, 2048, 'url'> extends { readonly error: string }
+  ? CheckMaxLength<Url, 2048, 'url'>
   : [Description] extends [never]
   ? unknown
   : CheckMaxLength<Description, 1024, 'description'> extends { readonly error: string }
@@ -41,7 +51,7 @@ export type ValidateMediaGalleryItemOptions<Url extends string, Description exte
  * Represents a single item inside a {@link MediaGalleryBuilder}.
  * Each item wraps a media URL with optional alt text and spoiler flag.
  *
- * @see {@link https://discord.com/developers/docs/components/reference#media-gallery-item-structure Discord Docs - Media Gallery Item}
+ * @see {@link https://docs.discord.com/developers/components/reference#media-gallery-item-structure Discord Docs - Media Gallery Item}
  */
 class MediaGalleryItemBuilderClass {
   public data: Partial<APIMediaGalleryItem> = {};
@@ -105,6 +115,8 @@ class MediaGalleryItemBuilderClass {
   setURL(url: string): this {
     if (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('attachment://'))
       throw new Error(`url must be http/https or attachment:// (got "${url}")`);
+    if (url.length > MAX_MEDIA_URL_LENGTH)
+      throw new Error(`url is too long, max is ${MAX_MEDIA_URL_LENGTH} characters but got ${url.length}`);
     this.data.media = { url };
     return this;
   }
@@ -117,8 +129,8 @@ class MediaGalleryItemBuilderClass {
    * @throws If description exceeds 1024 characters.
    */
   setDescription(desc: string): this {
-    if (desc.length > 1024)
-      throw new Error(`description is too long, max is 1024 characters but got ${desc.length}`);
+    if (desc.length > MAX_DESCRIPTION_LENGTH)
+      throw new Error(`description is too long, max is ${MAX_DESCRIPTION_LENGTH} characters but got ${desc.length}`);
     this.data.description = desc;
     return this;
   }
@@ -184,7 +196,7 @@ export type MediaGalleryItemBuilder = MediaGalleryItemBuilderClass;
 export interface MediaGalleryOptions<
   Items extends readonly MediaGalleryItemBuilder[] = MediaGalleryItemBuilder[],
 > {
-  /** Gallery items to display (1–10 entries required). */
+  /** Gallery items to display (1-10 entries required). */
   items?: readonly [...Items] & CheckArrayLength<Items, 1, 10, 'items'>;
 }
 
@@ -216,7 +228,7 @@ export interface MediaGalleryBuilderInstance<
  * });
  * ```
  *
- * @see {@link https://discord.com/developers/docs/components/reference#media-gallery Discord Docs - Media Gallery}
+ * @see {@link https://docs.discord.com/developers/components/reference#media-gallery Discord Docs - Media Gallery}
  */
 class MediaGalleryBuilderClass extends BaseComponent<Partial<APIMediaGalleryComponent>> {
   public override readonly type = ComponentType.MediaGallery;
@@ -258,7 +270,7 @@ class MediaGalleryBuilderClass extends BaseComponent<Partial<APIMediaGalleryComp
     const items = opts.items;
     if (items !== undefined) {
       const len = items.length;
-      if (len > 10) throw new Error("items size can't be more than 10");
+      if (len > MAX_ITEMS) throw new Error(`items size can't be more than ${MAX_ITEMS}`);
     }
     const payload = {
       type: ComponentType.MediaGallery,
@@ -278,8 +290,8 @@ class MediaGalleryBuilderClass extends BaseComponent<Partial<APIMediaGalleryComp
     if (!this.data.items) this.data.items = [];
     const cur = this.data.items.length;
     const add = items.length;
-    if (cur + add > 10)
-      throw new Error("items size can't be more than 10");
+    if (cur + add > MAX_ITEMS)
+      throw new Error(`items size can't be more than ${MAX_ITEMS}`);
     for (let i = 0; i < add; i++) {
       this.data.items.push(items[i] as unknown as APIMediaGalleryItem);
     }
@@ -297,7 +309,7 @@ class MediaGalleryBuilderClass extends BaseComponent<Partial<APIMediaGalleryComp
   spliceItems(index: number, deleteCount: number, ...items: MediaGalleryItemBuilder[]): this {
     if (!this.data.items) this.data.items = [];
     (this.data.items as unknown as MediaGalleryItemBuilder[]).splice(index, deleteCount, ...items);
-    this.validateArrayLength(this.data.items, 1, 10, 'items');
+    this.validateArrayLength(this.data.items, MIN_ITEMS, MAX_ITEMS, 'items');
     return this;
   }
 
@@ -308,35 +320,17 @@ class MediaGalleryBuilderClass extends BaseComponent<Partial<APIMediaGalleryComp
    * @throws If there are no items.
    */
   override toJSON(): APIMediaGalleryComponent {
-    const raw = this.data.items;
-    const len = raw ? raw.length : 0;
-    if (len === 0) throw new Error('need at least one item to serialize');
-    let serialized = raw as unknown as APIMediaGalleryItem[];
-    if (raw) {
-      let hasBuilder = false;
-      for (let i = 0; i < len; i++) {
-        const item = raw[i];
-        if (item && typeof (item as unknown as Record<string, unknown>).toJSON === 'function') {
-          hasBuilder = true;
-          break;
-        }
-      }
-      if (hasBuilder) {
-        serialized = new Array<APIMediaGalleryItem>(len);
-        for (let i = 0; i < len; i++) {
-          const item = raw[i]!;
-          serialized[i] = typeof (item as unknown as Record<string, unknown>).toJSON === 'function'
-            ? (item as unknown as { toJSON(): APIMediaGalleryItem }).toJSON()
-            : (item as APIMediaGalleryItem);
-        }
-      }
-    }
     const data = this.data;
-    return {
+    const len = data.items ? data.items.length : 0;
+    if (len === 0) throw new Error('need at least one item to serialize');
+
+    const payload: Record<string, unknown> = {
       type: ComponentType.MediaGallery,
-      items: serialized,
-      id: this.id !== undefined ? this.id : data.id,
-    } as unknown as APIMediaGalleryComponent;
+      items: serializeEntries<APIMediaGalleryItem>(data.items),
+    };
+    if (data.id !== undefined) payload.id = data.id;
+
+    return payload as unknown as APIMediaGalleryComponent;
   }
 }
 

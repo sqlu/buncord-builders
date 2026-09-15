@@ -1,10 +1,11 @@
 import { ButtonStyle, ComponentType } from '../enums.ts';
 import type { APIMessageComponentEmoji, APIButtonComponent } from '../types.ts';
 import type {
+  ExtractCustomId,
   CheckMaxLength,
   CheckMinLength,
   CheckUrl,
-  WithId,
+
   GetLabel,
   GetUrl,
   GetCustomIdField,
@@ -12,6 +13,12 @@ import type {
   CheckUrlConstraints,
 } from '../utils/guards.ts';
 import { BaseComponent, resolveRaw } from './base.ts';
+
+/** Maximum length of a button label. */
+const MAX_LABEL_LENGTH = 80;
+
+/** Maximum length of a link button URL. */
+const MAX_URL_LENGTH = 512;
 
 /**
  * Config options for a new ButtonBuilder.
@@ -215,48 +222,50 @@ class ButtonBuilderClass extends BaseComponent<Partial<APIButtonComponent>> {
    */
   constructor(opts?: ButtonOptions<string, string, string>) {
     if (!opts) {
-      super({ type: ComponentType.Button } as Partial<APIButtonComponent>);
+      super({ type: ComponentType.Button, style: ButtonStyle.Primary } as Partial<APIButtonComponent>);
       return;
     }
-    const s = opts.style;
-    const label = opts.label;
-    const emoji = opts.emoji;
-    const disabled = opts.disabled;
-    let custom_id: string | undefined;
-    let url: string | undefined;
-    let sku_id: string | undefined;
 
-    if (label !== undefined) {
-      if (label.length > 80) throw new Error(`label is too long, max is 80 characters but got ${label.length}`);
+    const style = opts.style ?? ButtonStyle.Primary;
+    if (!Number.isInteger(style) || style < ButtonStyle.Primary || style > ButtonStyle.Premium)
+      throw new Error('style must be a button style between 1 and 6');
+    const label = opts.label;
+    if (label !== undefined && label.length > MAX_LABEL_LENGTH) {
+      throw new Error(`label is too long, max is ${MAX_LABEL_LENGTH} characters but got ${label.length}`);
     }
 
-    if (s === ButtonStyle.Link) {
-      url = opts.url;
+    const payload: Partial<APIButtonComponent> = { type: ComponentType.Button, style };
+
+    if (style === ButtonStyle.Link) {
+      const url = opts.url;
       if (url !== undefined) {
-        if (url.length > 512) throw new Error(`url is too long, max is 512 characters but got ${url.length}`);
+        if (url.length > MAX_URL_LENGTH) {
+          throw new Error(`url is too long, max is ${MAX_URL_LENGTH} characters but got ${url.length}`);
+        }
         if (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('discord://')) {
           throw new Error(`url must be a valid http, https, or discord URL, got "${url}"`);
         }
+        payload.url = url;
       }
-    } else if (s === ButtonStyle.Premium) {
-      sku_id = opts.skuId ?? opts.sku_id;
+    } else if (style === ButtonStyle.Premium) {
+      const skuId = opts.skuId ?? opts.sku_id;
+      if (skuId !== undefined) payload.sku_id = skuId;
     } else {
-      custom_id = opts.customId ?? opts.custom_id;
-      if (custom_id !== undefined) {
-        if (custom_id.length < 1 || custom_id.length > 100) throw new Error(`customId is invalid, must be between 1 and 100 characters`);
+      const customId = opts.customId ?? opts.custom_id;
+      if (customId !== undefined) {
+        if (customId.length < 1 || customId.length > 100) {
+          throw new Error(`customId is invalid, must be between 1 and 100 characters`);
+        }
+        payload.custom_id = customId;
       }
     }
 
-    const payload = {
-      type: ComponentType.Button,
-      style: s,
-      label,
-      emoji,
-      disabled,
-      custom_id,
-      url,
-      sku_id,
-    } as unknown as Partial<APIButtonComponent>;
+    // Premium buttons must not carry a label or an emoji.
+    if (style !== ButtonStyle.Premium) {
+      if (label !== undefined) payload.label = label;
+      if (opts.emoji !== undefined) payload.emoji = opts.emoji;
+    }
+    if (opts.disabled !== undefined) payload.disabled = opts.disabled;
 
     super(payload);
   }
@@ -267,19 +276,21 @@ class ButtonBuilderClass extends BaseComponent<Partial<APIButtonComponent>> {
    * @returns The builder instance for chaining.
    */
   setStyle(style: ButtonStyle): this {
-    this.data.style = style;
-    
+    this.validateRange(style, ButtonStyle.Primary, ButtonStyle.Premium, 'style');
+    const data = this.data;
+    data.style = style;
+
     if (style === ButtonStyle.Link) {
-      if (this.data.custom_id !== undefined) (this.data as Record<string, unknown>).custom_id = undefined;
-      if (this.data.sku_id !== undefined) (this.data as Record<string, unknown>).sku_id = undefined;
+      delete data.custom_id;
+      delete data.sku_id;
     } else if (style === ButtonStyle.Premium) {
-      if (this.data.custom_id !== undefined) (this.data as Record<string, unknown>).custom_id = undefined;
-      if (this.data.url !== undefined) (this.data as Record<string, unknown>).url = undefined;
-      if (this.data.label !== undefined) (this.data as Record<string, unknown>).label = undefined;
-      if (this.data.emoji !== undefined) (this.data as Record<string, unknown>).emoji = undefined;
+      delete data.custom_id;
+      delete data.url;
+      delete data.label;
+      delete data.emoji;
     } else {
-      if (this.data.url !== undefined) (this.data as Record<string, unknown>).url = undefined;
-      if (this.data.sku_id !== undefined) (this.data as Record<string, unknown>).sku_id = undefined;
+      delete data.url;
+      delete data.sku_id;
     }
     return this;
   }
@@ -290,7 +301,7 @@ class ButtonBuilderClass extends BaseComponent<Partial<APIButtonComponent>> {
    * @returns The builder instance for chaining.
    */
   setLabel(lbl: CheckMaxLength<string, 80, 'label'>): this {
-    this.validateLength(lbl, 80, 'label');
+    this.validateLength(lbl, MAX_LABEL_LENGTH, 'label');
     this.data.label = lbl;
     return this;
   }
@@ -322,17 +333,20 @@ class ButtonBuilderClass extends BaseComponent<Partial<APIButtonComponent>> {
    * @returns The builder instance for chaining.
    */
   setSKUId(skuId: CheckMinLength<string, 1, 'skuId'> & CheckMaxLength<string, 100, 'skuId'>): this {
+    this.validateMinLength(skuId, 1, 'skuId');
     this.data.sku_id = skuId;
     return this;
   }
 
   /**
-   * Sets the link URL (limit 512 characters, http/https only).
-   * @param url The link URL.
+   * Sets the link URL (limit 512 characters, `http://`, `https://` or `discord://`).
+   *
+   * @param url - The link URL.
    * @returns The builder instance for chaining.
+   * @throws If the URL is too long or uses an unsupported scheme.
    */
   setURL(url: CheckUrl<string> & CheckMaxLength<string, 512, 'url'>): this {
-    this.validateLength(url, 512, 'url');
+    this.validateLength(url, MAX_URL_LENGTH, 'url');
     this.validateHttpUrl(url, 'url');
     this.data.url = url;
     return this;
@@ -353,20 +367,30 @@ class ButtonBuilderClass extends BaseComponent<Partial<APIButtonComponent>> {
    * 
    * @returns The serialized Button component payload.
    * 
-   * @see {@link https://discord.com/developers/docs/interactions/message-components#button-object}
+   * @see {@link https://docs.discord.com/developers/components/reference#button}
    */
   override toJSON(): APIButtonComponent {
-    if (this.id !== undefined) {
-      (this.data as Record<string, unknown>).id = this.id;
+    const data = this.data;
+    this.validateRange(data.style as number, ButtonStyle.Primary, ButtonStyle.Premium, 'style');
+    if (data.style === ButtonStyle.Link) {
+      this.validateHttpUrl(data.url ?? '', 'url');
+      this.validateLength(data.url, MAX_URL_LENGTH, 'url');
+      if (data.custom_id !== undefined || data.sku_id !== undefined)
+        throw new Error('Link buttons cannot have customId or skuId');
+    } else if (data.style === ButtonStyle.Premium) {
+      if (typeof data.sku_id !== 'string' || !data.sku_id) throw new Error('skuId is required');
+      if (data.custom_id !== undefined || data.url !== undefined || data.label !== undefined || data.emoji !== undefined)
+        throw new Error('Premium buttons cannot have customId, url, label or emoji');
+    } else {
+      this.validateCustomId(data.custom_id ?? '');
+      if (data.url !== undefined || data.sku_id !== undefined)
+        throw new Error('Interactive buttons cannot have url or skuId');
     }
-    if (this.data.style === undefined) {
-      this.data.style = ButtonStyle.Primary;
-    }
-    return this.data as APIButtonComponent;
+    this.validateLength(data.label, MAX_LABEL_LENGTH, 'label');
+    return data as APIButtonComponent;
   }
 }
 
-import type { ExtractCustomId } from '../utils/guards.ts';
 
 export const ButtonBuilder = ButtonBuilderClass as unknown as {
   new <

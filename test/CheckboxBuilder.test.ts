@@ -20,9 +20,11 @@ describe('CheckboxBuilder', () => {
 
   it('can be created empty or with empty object', () => {
     const cb1 = new CheckboxBuilder();
-    expect(cb1.toJSON().type).toBe(23);
+    expect(() => cb1.toJSON()).toThrow('customId');
+    expect(cb1.setCustomId('first').toJSON().type).toBe(23);
     const cb2 = new CheckboxBuilder({});
-    expect(cb2.toJSON().type).toBe(23);
+    expect(() => cb2.toJSON()).toThrow('customId');
+    expect(cb2.setCustomId('second').toJSON().type).toBe(23);
   });
 
   it('setDefault updates the value', () => {
@@ -108,13 +110,8 @@ describe('CheckboxGroupBuilder', () => {
     expect(json.max_values).toBe(2);
   });
 
-  it('throws if options array has less than 2 options', () => {
-    expect(() =>
-      new CheckboxGroupBuilder({
-        customId: 'x',
-        options: [opt1] as unknown as [CheckboxGroupOptionBuilder, CheckboxGroupOptionBuilder],
-      }),
-    ).toThrow('options');
+  it('allows one checkbox option', () => {
+    expect(new CheckboxGroupBuilder({ customId: 'x', options: [opt1] }).toJSON().options).toHaveLength(1);
   });
 
   it('allows zero minValues only when required is false', () => {

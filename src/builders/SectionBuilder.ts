@@ -2,6 +2,32 @@ import { ComponentType } from '../enums.ts';
 import type { APISectionComponent, APITextDisplayComponent, APIButtonComponent, APIThumbnailComponent } from '../types.ts';
 import type { CheckArrayLength } from '../utils/guards.ts';
 import { BaseComponent, resolveRaw } from './base.ts';
+
+/** Bounds of a section's text display list. */
+const MIN_COMPONENTS = 1;
+const MAX_COMPONENTS = 3;
+
+/**
+ * Rejects children Discord does not allow inside a Section.
+ *
+ * @param components - The children to check.
+ * @throws If any child is not a TextDisplay component.
+ */
+function assertSectionChildren(components: readonly { type?: number }[]): void {
+  for (let i = 0; i < components.length; i++) {
+    const type = components[i]?.type;
+    if (type !== ComponentType.TextDisplay) {
+      throw new Error(`Section can only contain TextDisplay components, but got type ${type}`);
+    }
+  }
+}
+
+function assertSectionAccessory(accessory: { type?: number } | undefined): void {
+  const type = accessory?.type;
+  if (type !== ComponentType.Button && type !== ComponentType.Thumbnail) {
+    throw new Error(`Section accessory must be of type Button or Thumbnail, but got type ${type}`);
+  }
+}
 import type { TextDisplayBuilder } from './TextDisplayBuilder.ts';
 import type { ButtonBuilder } from './ButtonBuilder.ts';
 import type { ThumbnailBuilder } from './ThumbnailBuilder.ts';
@@ -20,7 +46,7 @@ export interface SectionOptions<
 > {
   /** The child text displays grouped inside the section. */
   components?: Components & CheckArrayLength<Components, 1, 3, 'components'>;
-  /** An optional accessory displayed on the right side of the section. */
+  /** Accessory displayed on the right side; required before serialization. */
   accessory?: SectionAccessory;
 }
 
@@ -37,7 +63,7 @@ export interface SectionBuilderInstance<
 
 /**
  * Builds a Section component that groups up to 3 {@link TextDisplayBuilder}
- * side-by-side with an optional accessory (Button or Thumbnail).
+ * side-by-side with an accessory (Button or Thumbnail).
  *
  * Sections are V2 message-only components (`IS_COMPONENTS_V2` flag required).
  *
@@ -51,7 +77,7 @@ export interface SectionBuilderInstance<
  * });
  * ```
  *
- * @see {@link https://discord.com/developers/docs/components/reference#section Discord Docs - Section}
+ * @see {@link https://docs.discord.com/developers/components/reference#section Discord Docs - Section}
  */
 class SectionBuilderClass extends BaseComponent<Partial<APISectionComponent>> {
   public override readonly type = ComponentType.Section;
@@ -62,7 +88,7 @@ class SectionBuilderClass extends BaseComponent<Partial<APISectionComponent>> {
    * @param data - Raw section payload from Discord.
    * @returns Populated `SectionBuilderClass` instance.
    *
-   * @see {@link https://discord.com/developers/docs/components/reference#section-section-structure Discord Docs}
+   * @see {@link https://docs.discord.com/developers/components/reference#section Discord Docs}
    */
   public static from(data: APISectionComponent): SectionBuilderClass {
     const raw = resolveRaw(data) as unknown as APISectionComponent;
@@ -82,7 +108,7 @@ class SectionBuilderClass extends BaseComponent<Partial<APISectionComponent>> {
   }
 
   /**
-   * The optional accessory component (Button or Thumbnail) on the right side.
+   * The accessory component (Button or Thumbnail), if configured.
    * @readonly
    */
   public get accessory(): SectionAccessory | undefined {
@@ -103,7 +129,8 @@ class SectionBuilderClass extends BaseComponent<Partial<APISectionComponent>> {
     if (!opts) return;
     if (opts.components !== undefined) {
       const len = opts.components.length;
-      if (len > 3) throw new Error("can't have more than 3 components here");
+      if (len > MAX_COMPONENTS) throw new Error(`can't have more than ${MAX_COMPONENTS} components here`);
+      assertSectionChildren(opts.components);
       this.data.components = opts.components as unknown as APITextDisplayComponent[];
     }
     if (opts.accessory !== undefined) this.setAccessory(opts.accessory);
@@ -117,13 +144,16 @@ class SectionBuilderClass extends BaseComponent<Partial<APISectionComponent>> {
    * @throws If adding would exceed the 3-component limit.
    */
   addTextDisplayComponents(...components: TextDisplayBuilder[]): this {
-    if (!this.data.components) this.data.components = [];
-    const cur = this.data.components.length;
-    const add = components.length;
-    if (cur + add > 3)
-      throw new Error("can't have more than 3 components here");
-    for (let i = 0; i < add; i++) {
-      this.data.components.push(components[i] as unknown as APITextDisplayComponent);
+    let current = this.data.components;
+    if (!current) {
+      current = [];
+      this.data.components = current;
+    }
+    if (current.length + components.length > MAX_COMPONENTS)
+      throw new Error(`can't have more than ${MAX_COMPONENTS} components here`);
+    assertSectionChildren(components);
+    for (let i = 0; i < components.length; i++) {
+      current.push(components[i] as unknown as APITextDisplayComponent);
     }
     return this;
   }
@@ -137,9 +167,15 @@ class SectionBuilderClass extends BaseComponent<Partial<APISectionComponent>> {
    * @returns This builder for chaining.
    */
   spliceTextDisplayComponents(index: number, deleteCount: number, ...components: TextDisplayBuilder[]): this {
-    if (!this.data.components) this.data.components = [];
-    (this.data.components as unknown as TextDisplayBuilder[]).splice(index, deleteCount, ...components);
-    this.validateArrayLength(this.data.components, 1, 3, 'components');
+    if (components.length > MAX_COMPONENTS) throw new Error(`can't have more than ${MAX_COMPONENTS} components here`);
+    assertSectionChildren(components);
+    const current = this.data.components ?? [];
+    const next = current.slice();
+    next.splice(index, deleteCount, ...components as unknown as APITextDisplayComponent[]);
+    this.validateArrayLength(next, MIN_COMPONENTS, MAX_COMPONENTS, 'components');
+    assertSectionChildren(next);
+    current.splice(index, deleteCount, ...components as unknown as APITextDisplayComponent[]);
+    this.data.components = current;
     return this;
   }
 
@@ -150,12 +186,10 @@ class SectionBuilderClass extends BaseComponent<Partial<APISectionComponent>> {
    * @returns This builder for chaining.
    * @throws If the accessory type is not Button or Thumbnail.
    *
-   * @see {@link https://discord.com/developers/docs/components/reference#section-section-structure Discord Docs}
+   * @see {@link https://docs.discord.com/developers/components/reference#section Discord Docs}
    */
   setAccessory(accessory: SectionAccessory): this {
-    const t = accessory.type;
-    if (t !== ComponentType.Button && t !== ComponentType.Thumbnail)
-      throw new Error(`Section accessory must be of type Button or Thumbnail, but got type ${t}`);
+    assertSectionAccessory(accessory);
     this.data.accessory = accessory as unknown as APIButtonComponent | APIThumbnailComponent;
     return this;
   }
@@ -175,7 +209,7 @@ class SectionBuilderClass extends BaseComponent<Partial<APISectionComponent>> {
   setThumbnailAccessory(thumbnail: ThumbnailBuilder): this { return this.setAccessory(thumbnail); }
 
   /**
-   * Clears the optional accessory from this section.
+   * Clears the accessory while composing; set another before serialization.
    * @returns This builder for chaining.
    */
   clearAccessory(): this {
@@ -187,29 +221,35 @@ class SectionBuilderClass extends BaseComponent<Partial<APISectionComponent>> {
    * Convert to raw Discord API payload.
    *
    * @returns The JSON representation.
-   * @throws If there are no text display components.
+   * @throws If children or accessory do not meet Section requirements.
    */
-  override toJSON(): Record<string, unknown> {
+  override toJSON(): APISectionComponent {
     const comps = this.data.components;
     const len = comps ? comps.length : 0;
     if (len === 0)
       throw new Error('need at least one TextDisplay component to serialize');
-    const serialized = new Array(len);
+
+    this.validateArrayLength(comps!, MIN_COMPONENTS, MAX_COMPONENTS, 'components');
+    assertSectionChildren(comps!);
+    const accessory = this.data.accessory;
+    assertSectionAccessory(accessory);
+
+    const serialized = new Array<APITextDisplayComponent>(len);
     for (let i = 0; i < len; i++) {
-      serialized[i] = (comps![i] as TextDisplayBuilder).toJSON();
+      serialized[i] = resolveRaw(comps![i]) as unknown as APITextDisplayComponent;
     }
-    const res: Record<string, unknown> = {
+    assertSectionChildren(serialized);
+    const serializedAccessory = resolveRaw(accessory) as unknown as APIButtonComponent | APIThumbnailComponent;
+    assertSectionAccessory(serializedAccessory);
+
+    const res: APISectionComponent = {
       type: ComponentType.Section,
       components: serialized,
+      accessory: serializedAccessory,
     };
-    const acc = this.data.accessory as SectionAccessory | undefined;
-    if (acc) {
-      res.accessory = acc.toJSON();
-    }
-    const idVal = this.id !== undefined ? this.id : this.data.id;
-    if (idVal !== undefined) {
-      res.id = idVal;
-    }
+
+    if (this.data.id !== undefined) res.id = this.data.id;
+
     return res;
   }
 }

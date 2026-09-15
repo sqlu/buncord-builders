@@ -1,3 +1,12 @@
+/**
+ * @file webhook.ts
+ * @description Posts a Components V2 message to a Discord webhook.
+ *
+ * Run with:  DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..." bun run exemples/webhook.ts
+ *
+ * @see {@link https://docs.discord.com/developers/resources/webhook#execute-webhook}
+ */
+
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -9,7 +18,11 @@ import {
   TextDisplayBuilder,
 } from '../src/index.ts';
 
-const url = "webhook"
+const url = process.env.DISCORD_WEBHOOK_URL;
+if (!url) {
+  console.error('Set DISCORD_WEBHOOK_URL to the webhook you want to post to.');
+  process.exit(1);
+}
 
 const container = new ContainerBuilder()
   .addComponents(
@@ -32,9 +45,10 @@ const container = new ContainerBuilder()
     }),
   );
 
-const pd = {
+// The IS_COMPONENTS_V2 flag is required for Container and its children.
+const payload = {
   flags: MessageFlags.IsComponentsV2,
-  components: [container],
+  components: [container.toJSON()],
 };
 
 const res = await fetch(url, {
@@ -42,11 +56,12 @@ const res = await fetch(url, {
   headers: {
     'Content-Type': 'application/json',
   },
-  body: JSON.stringify(pd),
+  body: JSON.stringify(payload),
 });
 
 if (!res.ok) {
-  const err = await res.text();
-  console.error(err);
+  console.error(`Discord rejected the payload (${res.status}):`, await res.text());
   process.exit(1);
 }
+
+console.log('Message sent.');

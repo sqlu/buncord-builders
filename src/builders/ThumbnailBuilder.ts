@@ -3,11 +3,17 @@ import type { APIThumbnailComponent } from '../types.ts';
 import type { CheckMediaUrl, CheckMaxLength } from '../utils/guards.ts';
 import { BaseComponent, resolveRaw } from './base.ts';
 
+/** Maximum length of an unfurled media item URL. */
+const MAX_MEDIA_URL_LENGTH = 2048;
+
+/** Maximum length of the alt text description. */
+const MAX_DESCRIPTION_LENGTH = 1024;
+
 /**
  * Config options for a new ThumbnailBuilder.
  */
 export interface ThumbnailOptions {
-  /** Image URL (http/https/attachment scheme). */
+  /** Image URL (`http://`, `https://` or `attachment://` scheme, max 2048 characters). */
   url?: string;
   /** Alt description text (up to 1024 chars). */
   description?: string;
@@ -29,8 +35,8 @@ export type ValidateThumbnailOptions<Url extends string, Description extends str
       : unknown)
   : CheckMediaUrl<Url> extends { readonly error: string }
   ? CheckMediaUrl<Url>
-  : CheckMaxLength<Url, 512, 'url'> extends { readonly error: string }
-  ? CheckMaxLength<Url, 512, 'url'>
+  : CheckMaxLength<Url, 2048, 'url'> extends { readonly error: string }
+  ? CheckMaxLength<Url, 2048, 'url'>
   : [Description] extends [never]
   ? unknown
   : CheckMaxLength<Description, 1024, 'description'> extends { readonly error: string }
@@ -58,7 +64,7 @@ export interface ThumbnailBuilderInstance extends ThumbnailBuilderClass { }
  * });
  * ```
  *
- * @see {@link https://discord.com/developers/docs/components/reference#thumbnail Discord Docs - Thumbnail}
+ * @see {@link https://docs.discord.com/developers/components/reference#thumbnail Discord Docs - Thumbnail}
  */
 class ThumbnailBuilderClass extends BaseComponent<Partial<APIThumbnailComponent>> {
   public override readonly type = ComponentType.Thumbnail;
@@ -122,9 +128,10 @@ class ThumbnailBuilderClass extends BaseComponent<Partial<APIThumbnailComponent>
    * @returns This builder for chaining.
    * @throws If URL uses an unsupported scheme.
    */
-  setURL(url: CheckMediaUrl<string> & CheckMaxLength<string, 512, 'url'>): this {
+  setURL(url: CheckMediaUrl<string> & CheckMaxLength<string, 2048, 'url'>): this {
     if (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('attachment://'))
       throw new Error(`url must be http/https or attachment:// (got "${url}")`);
+    this.validateLength(url, MAX_MEDIA_URL_LENGTH, 'url');
     this.data.media = { url };
     return this;
   }
@@ -137,7 +144,7 @@ class ThumbnailBuilderClass extends BaseComponent<Partial<APIThumbnailComponent>
    * @throws If description exceeds 1024 characters.
    */
   setDescription(desc: CheckMaxLength<string, 1024, 'description'>): this {
-    this.validateLength(desc, 1024, 'description');
+    this.validateLength(desc, MAX_DESCRIPTION_LENGTH, 'description');
     this.data.description = desc;
     return this;
   }
@@ -170,9 +177,6 @@ class ThumbnailBuilderClass extends BaseComponent<Partial<APIThumbnailComponent>
    */
   override toJSON(): APIThumbnailComponent {
     if (!this.data.media?.url) throw new Error('need a media url to serialize toJSON');
-    if (this.id !== undefined) {
-      (this.data as Record<string, unknown>).id = this.id;
-    }
     return this.data as APIThumbnailComponent;
   }
 }

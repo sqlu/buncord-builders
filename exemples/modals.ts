@@ -5,7 +5,7 @@
  *
  * Run with:  bun run exemples/modals.ts
  *
- * @see {@link https://discord.com/developers/docs/interactions/receiving-and-responding#interaction-response-object-modal}
+ * @see {@link https://docs.discord.com/developers/interactions/receiving-and-responding#interaction-callback-modal-data-structure}
  */
 
 import {

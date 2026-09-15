@@ -5,7 +5,7 @@
  *
  * Run with:  bun run exemples/smart-layout.ts
  *
- * @see {@link https://discord.com/developers/docs/components/reference#action-row}
+ * @see {@link https://docs.discord.com/developers/components/reference#action-row}
  */
 
 import {

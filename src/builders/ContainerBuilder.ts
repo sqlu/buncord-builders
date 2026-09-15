@@ -1,7 +1,28 @@
 import { ComponentType } from '../enums.ts';
 import type { RGBTuple, APIContainerComponent, APIContainerComponentChild } from '../types.ts';
 import type { CheckArrayLength } from '../utils/guards.ts';
-import { BaseComponent, resolveRaw } from './base.ts';
+import { BaseComponent, CONTAINER_CHILD_TYPES, resolveRaw } from './base.ts';
+
+/** Bounds of a container's child list. */
+const MIN_COMPONENTS = 1;
+const MAX_COMPONENTS = 10;
+
+/**
+ * Rejects children Discord does not allow inside a Container.
+ *
+ * @param components - The children to check.
+ * @throws If any child is of an unsupported component type.
+ */
+function assertContainerChildren(components: readonly ContainerComponent[]): void {
+  for (let i = 0; i < components.length; i++) {
+    const type = components[i]?.type;
+    if (type === undefined || !CONTAINER_CHILD_TYPES.has(type)) {
+      throw new Error(
+        `component type ${type} is not allowed inside a Container (only ActionRow, TextDisplay, Section, MediaGallery, Separator, and File are)`,
+      );
+    }
+  }
+}
 import type { ActionRowBuilder } from './ActionRowBuilder.ts';
 import type { FileBuilder } from './FileBuilder.ts';
 import type { MediaGalleryBuilder } from './MediaGalleryBuilder.ts';
@@ -66,7 +87,7 @@ export interface ContainerBuilderInstance<
  * });
  * ```
  *
- * @see {@link https://discord.com/developers/docs/components/reference#container Discord Docs - Container}
+ * @see {@link https://docs.discord.com/developers/components/reference#container Discord Docs - Container}
  */
 class ContainerBuilderClass extends BaseComponent<Partial<APIContainerComponent>> {
   public override readonly type = ComponentType.Container;
@@ -131,7 +152,8 @@ class ContainerBuilderClass extends BaseComponent<Partial<APIContainerComponent>
     if (opts.spoiler !== undefined) this.setSpoiler(opts.spoiler);
     if (opts.components !== undefined) {
       const len = opts.components.length;
-      if (len > 10) throw new Error("components size can't exceed 10");
+      if (len > MAX_COMPONENTS) throw new Error(`components size can't exceed ${MAX_COMPONENTS}`);
+      assertContainerChildren(opts.components);
       this.data.components = opts.components as unknown as APIContainerComponentChild[];
     }
   }
@@ -145,7 +167,8 @@ class ContainerBuilderClass extends BaseComponent<Partial<APIContainerComponent>
   setAccentColor(color: RGBTuple | number): this {
     if (Array.isArray(color)) {
       const [r, g, b] = color as RGBTuple;
-      if (r < 0 || r > 255 || g < 0 || g > 255 || b < 0 || b > 255) {
+      if (!Number.isInteger(r) || !Number.isInteger(g) || !Number.isInteger(b) ||
+          r < 0 || r > 255 || g < 0 || g > 255 || b < 0 || b > 255) {
         throw new Error(`RGB values must be between 0 and 255, but got [${r}, ${g}, ${b}]`);
       }
       this.data.accent_color = (r << 16) + (g << 8) + b;
@@ -184,13 +207,16 @@ class ContainerBuilderClass extends BaseComponent<Partial<APIContainerComponent>
    * @throws If total components would exceed 10
    */
   addComponents(...components: ContainerComponent[]): this {
-    if (!this.data.components) this.data.components = [];
-    const cur = this.data.components.length;
-    const add = components.length;
-    if (cur + add > 10)
-      throw new Error("components size can't exceed 10");
-    for (let i = 0; i < add; i++) {
-      this.data.components.push(components[i] as unknown as APIContainerComponentChild);
+    let current = this.data.components;
+    if (!current) {
+      current = [];
+      this.data.components = current;
+    }
+    if (current.length + components.length > MAX_COMPONENTS)
+      throw new Error(`components size can't exceed ${MAX_COMPONENTS}`);
+    assertContainerChildren(components);
+    for (let i = 0; i < components.length; i++) {
+      current.push(components[i] as unknown as APIContainerComponentChild);
     }
     return this;
   }
@@ -268,7 +294,8 @@ class ContainerBuilderClass extends BaseComponent<Partial<APIContainerComponent>
       deleteCount,
       ...components,
     );
-    this.validateArrayLength(this.data.components, 1, 10, 'components');
+    assertContainerChildren(this.data.components as unknown as ContainerComponent[]);
+    this.validateArrayLength(this.data.components, MIN_COMPONENTS, MAX_COMPONENTS, 'components');
     return this;
   }
 
@@ -298,7 +325,7 @@ class ContainerBuilderClass extends BaseComponent<Partial<APIContainerComponent>
     if (this.data.spoiler !== undefined) {
       res.spoiler = this.data.spoiler;
     }
-    const idVal = this.id !== undefined ? this.id : this.data.id;
+    const idVal = this.data.id;
     if (idVal !== undefined) {
       res.id = idVal;
     }

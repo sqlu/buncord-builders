@@ -10,7 +10,12 @@ import type {
   CheckStringConstraints,
   ValidateSelectMenuRequired,
 } from '../utils/guards.ts';
-import { BaseComponent, resolveRaw } from './base.ts';
+import { BaseComponent, resolveRaw, serializeEntries } from './base.ts';
+import { validateOptionFields } from '../utils/OptionValidation.ts';
+
+/** Bounds of a checkbox group's option list. */
+const MIN_OPTIONS = 1;
+const MAX_OPTIONS = 10;
 /**
  * Config options for a new CheckboxGroupOptionBuilder.
  * @template Value The value string literal.
@@ -53,7 +58,7 @@ export interface CheckboxGroupOptions<
   MinValues extends number = number,
   MaxValues extends number = number,
 > {
-  /** The list of checkbox options (2-10 options allowed). */
+  /** The list of checkbox options (1-10 options allowed). */
   options?: readonly [...Options];
   /** The minimum number of checked options required (0-10). */
   minValues?: MinValues;
@@ -85,8 +90,8 @@ export type ValidateCheckboxGroupOptions<Opts> =
   : Opts extends { options: unknown }
   ? ([GetOptions<Opts>] extends [never]
       ? { readonly error: 'options must be a valid array' }
-      : CheckArrayLength<GetOptions<Opts>, 2, 10, 'options'> extends { readonly error: string }
-      ? CheckArrayLength<GetOptions<Opts>, 2, 10, 'options'>
+      : CheckArrayLength<GetOptions<Opts>, 1, 10, 'options'> extends { readonly error: string }
+      ? CheckArrayLength<GetOptions<Opts>, 1, 10, 'options'>
       : Opts extends { minValues: number; maxValues: number }
       ? (IsLessThanOrEqual<Opts['minValues'], Opts['maxValues']> extends true
           ? unknown
@@ -248,8 +253,7 @@ class CheckboxGroupOptionBuilderClass {
    * @throws If value or label is missing
    */
   toJSON(): APICheckboxGroupOption {
-    if (!this.data.value) throw new Error('value is required');
-    if (!this.data.label) throw new Error('label is required');
+    validateOptionFields(this.data);
     return this.data as APICheckboxGroupOption;
   }
 }
@@ -291,7 +295,7 @@ export interface CheckboxGroupBuilderInstance<
 
 /**
  * Builds a Checkbox Group component (type 22) for use inside modal forms.
- * Lets users select **multiple** options from a predefined list (2-10 options required).
+ * Lets users select one or more options from a predefined list (1-10 options required).
  *
  * Set `minValues`/`maxValues` to control how many choices are valid.
  * `minValues: 0` is only allowed when `required` is `false`.
@@ -311,7 +315,7 @@ export interface CheckboxGroupBuilderInstance<
  * });
  * ```
  *
- * @see {@link https://discord.com/developers/docs/components/reference#checkbox-group Discord Docs - Checkbox Group}
+ * @see {@link https://docs.discord.com/developers/components/reference#checkbox-group Discord Docs - Checkbox Group}
  */
 class CheckboxGroupBuilderClass extends BaseComponent<Partial<APICheckboxGroupComponent>> {
   public override readonly type = ComponentType.CheckboxGroup;
@@ -329,9 +333,9 @@ class CheckboxGroupBuilderClass extends BaseComponent<Partial<APICheckboxGroupCo
       customId: raw.custom_id,
       options: opts,
     });
+    if (raw.required !== undefined) builder.setRequired(raw.required);
     if (raw.min_values !== undefined) builder.setMinValues(raw.min_values);
     if (raw.max_values !== undefined) builder.setMaxValues(raw.max_values);
-    if (raw.required !== undefined) builder.setRequired(raw.required);
     if (raw.id !== undefined) builder.setId(raw.id);
     return builder;
   }
@@ -425,7 +429,7 @@ class CheckboxGroupBuilderClass extends BaseComponent<Partial<APICheckboxGroupCo
     }
 
     if (options !== undefined) {
-      this.validateArrayLength(options, 2, 10, 'options');
+      this.validateArrayLength(options, MIN_OPTIONS, MAX_OPTIONS, 'options');
     }
 
     this.validateCheckboxGroupValues(min, max, opts.required);
@@ -479,13 +483,13 @@ class CheckboxGroupBuilderClass extends BaseComponent<Partial<APICheckboxGroupCo
   }
 
   /**
-   * Replaces all checkbox options (must be between 2 and 10 options).
+   * Replaces all checkbox options (must be between 1 and 10 options).
    * @param options Array of options to set
    * @returns This builder instance
-   * @throws If options count is not between 2 and 10
+   * @throws If options count is not between 1 and 10
    */
   setOptions(options: CheckboxGroupOptionBuilder[]): this {
-    this.validateArrayLength(options, 2, 10, 'options');
+    this.validateArrayLength(options, MIN_OPTIONS, MAX_OPTIONS, 'options');
     this.data.options = options as unknown as APICheckboxGroupOption[];
     return this;
   }
@@ -500,8 +504,8 @@ class CheckboxGroupBuilderClass extends BaseComponent<Partial<APICheckboxGroupCo
     if (!this.data.options) this.data.options = [];
     const cur = this.data.options.length;
     const add = options.length;
-    if (cur + add > 10)
-      throw new Error("options size can't be more than 10");
+    if (cur + add > MAX_OPTIONS)
+      throw new Error(`options size can't be more than ${MAX_OPTIONS}`);
     for (let i = 0; i < add; i++) {
       this.data.options.push(options[i] as unknown as APICheckboxGroupOption);
     }
@@ -514,7 +518,7 @@ class CheckboxGroupBuilderClass extends BaseComponent<Partial<APICheckboxGroupCo
    * @param deleteCount Number of elements to delete
    * @param options Options to insert
    * @returns This builder instance
-   * @throws If result would not have between 2 and 10 options
+   * @throws If result would not have between 1 and 10 options
    */
   spliceOptions(
     index: number,
@@ -527,7 +531,7 @@ class CheckboxGroupBuilderClass extends BaseComponent<Partial<APICheckboxGroupCo
       deleteCount,
       ...options,
     );
-    this.validateArrayLength(this.data.options, 2, 10, 'options');
+    this.validateArrayLength(this.data.options, MIN_OPTIONS, MAX_OPTIONS, 'options');
     return this;
   }
 
@@ -536,38 +540,29 @@ class CheckboxGroupBuilderClass extends BaseComponent<Partial<APICheckboxGroupCo
    * @returns The JSON representation
    */
   override toJSON(): APICheckboxGroupComponent {
-    const rawOpts = this.data.options;
-    const len = rawOpts ? rawOpts.length : 0;
-    let serializedOpts = rawOpts as unknown as APICheckboxGroupOption[];
-    if (rawOpts) {
-      let hasBuilder = false;
-      for (let i = 0; i < len; i++) {
-        const o = rawOpts[i];
-        if (o && typeof (o as unknown as Record<string, unknown>).toJSON === 'function') {
-          hasBuilder = true;
-          break;
-        }
-      }
-      if (hasBuilder) {
-        serializedOpts = new Array<APICheckboxGroupOption>(len);
-        for (let i = 0; i < len; i++) {
-          const o = rawOpts[i]!;
-          serializedOpts[i] = typeof (o as unknown as Record<string, unknown>).toJSON === 'function'
-            ? (o as unknown as { toJSON(): APICheckboxGroupOption }).toJSON()
-            : (o as APICheckboxGroupOption);
-        }
-      }
-    }
     const data = this.data;
-    return {
+    if (data.custom_id === undefined) throw new Error('customId is required');
+    this.validateCustomId(data.custom_id);
+    this.validateCheckboxGroupValues(data.min_values, data.max_values);
+    const len = data.options ? data.options.length : 0;
+    if (len < MIN_OPTIONS || len > MAX_OPTIONS) {
+      throw new Error(`options needs between ${MIN_OPTIONS} and ${MAX_OPTIONS} elements, but got ${len}`);
+    }
+
+    const options = serializeEntries<APICheckboxGroupOption>(data.options);
+    for (let i = 0; i < options.length; i++) validateOptionFields(options[i]!);
+    const payload: Record<string, unknown> = {
       type: ComponentType.CheckboxGroup,
-      custom_id: data.custom_id,
-      options: serializedOpts,
-      min_values: data.min_values,
-      max_values: data.max_values,
-      required: data.required,
-      id: this.id !== undefined ? this.id : data.id,
-    } as unknown as APICheckboxGroupComponent;
+      options,
+    };
+
+    if (data.custom_id !== undefined) payload.custom_id = data.custom_id;
+    if (data.min_values !== undefined) payload.min_values = data.min_values;
+    if (data.max_values !== undefined) payload.max_values = data.max_values;
+    if (data.required !== undefined) payload.required = data.required;
+    if (data.id !== undefined) payload.id = data.id;
+
+    return payload as unknown as APICheckboxGroupComponent;
   }
 }
 

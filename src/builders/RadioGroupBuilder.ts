@@ -8,7 +8,12 @@ import type {
   GetCustomIdField,
   CheckStringConstraints,
 } from '../utils/guards.ts';
-import { BaseComponent, resolveRaw } from './base.ts';
+import { BaseComponent, resolveRaw, serializeEntries } from './base.ts';
+import { validateOptionFields } from '../utils/OptionValidation.ts';
+
+/** Bounds of a radio group's option list. */
+const MIN_OPTIONS = 2;
+const MAX_OPTIONS = 10;
 
 /**
  * Config options for a new RadioGroupOptionBuilder.
@@ -209,8 +214,7 @@ class RadioGroupOptionBuilderClass {
    * @throws If value or label is missing
    */
   toJSON(): APIRadioGroupOption {
-    if (!this.data.value) throw new Error('value is required');
-    if (!this.data.label) throw new Error('label is required');
+    validateOptionFields(this.data);
     return this.data as APIRadioGroupOption;
   }
 }
@@ -272,7 +276,7 @@ export interface RadioGroupBuilderInstance<
  * });
  * ```
  *
- * @see {@link https://discord.com/developers/docs/components/reference#radio-button Discord Docs - Radio Button Group}
+ * @see {@link https://docs.discord.com/developers/components/reference#radio-group Discord Docs - Radio Button Group}
  */
 class RadioGroupBuilderClass extends BaseComponent<Partial<APIRadioGroupComponent>> {
   public override readonly type = ComponentType.RadioGroup;
@@ -349,7 +353,7 @@ class RadioGroupBuilderClass extends BaseComponent<Partial<APIRadioGroupComponen
     }
 
     if (options !== undefined) {
-      this.validateArrayLength(options, 2, 10, 'options');
+      this.validateArrayLength(options, MIN_OPTIONS, MAX_OPTIONS, 'options');
     }
   }
 
@@ -381,7 +385,7 @@ class RadioGroupBuilderClass extends BaseComponent<Partial<APIRadioGroupComponen
    * @throws If options count is not between 2 and 10
    */
   setOptions(options: RadioGroupOptionBuilder[]): this {
-    this.validateArrayLength(options, 2, 10, 'options');
+    this.validateArrayLength(options, MIN_OPTIONS, MAX_OPTIONS, 'options');
     this.data.options = options as unknown as APIRadioGroupOption[];
     return this;
   }
@@ -396,8 +400,8 @@ class RadioGroupBuilderClass extends BaseComponent<Partial<APIRadioGroupComponen
     if (!this.data.options) this.data.options = [];
     const cur = this.data.options.length;
     const add = options.length;
-    if (cur + add > 10)
-      throw new Error("options size can't be more than 10");
+    if (cur + add > MAX_OPTIONS)
+      throw new Error(`options size can't be more than ${MAX_OPTIONS}`);
     for (let i = 0; i < add; i++) {
       this.data.options.push(options[i] as unknown as APIRadioGroupOption);
     }
@@ -423,7 +427,7 @@ class RadioGroupBuilderClass extends BaseComponent<Partial<APIRadioGroupComponen
       deleteCount,
       ...options,
     );
-    this.validateArrayLength(this.data.options, 2, 10, 'options');
+    this.validateArrayLength(this.data.options, MIN_OPTIONS, MAX_OPTIONS, 'options');
     return this;
   }
 
@@ -433,38 +437,26 @@ class RadioGroupBuilderClass extends BaseComponent<Partial<APIRadioGroupComponen
    * @throws If options count is less than 2
    */
   override toJSON(): APIRadioGroupComponent {
-    const rawOpts = this.data.options;
-    const len = rawOpts ? rawOpts.length : 0;
-    if (len < 2)
-      throw new Error('need at least 2 options to serialize (got ' + len + ')');
-    let serializedOpts = rawOpts as unknown as APIRadioGroupOption[];
-    if (rawOpts) {
-      let hasBuilder = false;
-      for (let i = 0; i < len; i++) {
-        const o = rawOpts[i];
-        if (o && typeof (o as unknown as Record<string, unknown>).toJSON === 'function') {
-          hasBuilder = true;
-          break;
-        }
-      }
-      if (hasBuilder) {
-        serializedOpts = new Array<APIRadioGroupOption>(len);
-        for (let i = 0; i < len; i++) {
-          const o = rawOpts[i]!;
-          serializedOpts[i] = typeof (o as unknown as Record<string, unknown>).toJSON === 'function'
-            ? (o as unknown as { toJSON(): APIRadioGroupOption }).toJSON()
-            : (o as APIRadioGroupOption);
-        }
-      }
-    }
     const data = this.data;
-    return {
+    if (data.custom_id === undefined) throw new Error('customId is required');
+    this.validateCustomId(data.custom_id);
+    const len = data.options ? data.options.length : 0;
+    if (len < MIN_OPTIONS || len > MAX_OPTIONS) {
+      throw new Error(`options needs between ${MIN_OPTIONS} and ${MAX_OPTIONS} elements, but got ${len}`);
+    }
+
+    const options = serializeEntries<APIRadioGroupOption>(data.options);
+    for (let i = 0; i < options.length; i++) validateOptionFields(options[i]!);
+    const payload: Record<string, unknown> = {
       type: ComponentType.RadioGroup,
-      custom_id: data.custom_id,
-      options: serializedOpts,
-      required: data.required,
-      id: this.id !== undefined ? this.id : data.id,
-    } as unknown as APIRadioGroupComponent;
+      options,
+    };
+
+    if (data.custom_id !== undefined) payload.custom_id = data.custom_id;
+    if (data.required !== undefined) payload.required = data.required;
+    if (data.id !== undefined) payload.id = data.id;
+
+    return payload as unknown as APIRadioGroupComponent;
   }
 }
 

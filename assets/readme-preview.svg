@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="282" viewBox="0 0 800 282" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">Build a release announcement with buncord builders</title>
+  <desc id="desc">An illustrative Discord message with a pink container accent, release text and two action buttons.</desc>
+  <defs>
+    <linearGradient id="bg" x2="800" y2="282" gradientUnits="userSpaceOnUse"><stop stop-color="#171c2c"/><stop offset="1" stop-color="#251728"/></linearGradient>
+  </defs>
+  <rect x="1" y="1" width="798" height="280" rx="18" fill="url(#bg)" stroke="#383342"/>
+  <g font-family="system-ui, -apple-system, Segoe UI, sans-serif">
+    <text x="28" y="33" fill="#b5bac1" font-size="12" letter-spacing="2">FROM TYPESCRIPT TO DISCORD</text>
+    <circle cx="51" cy="77" r="23" fill="#ff3b92"/>
+    <text x="51" y="85" fill="#fff" font-size="24" font-weight="800" text-anchor="middle">b</text>
+    <text x="88" y="70" fill="#f2f3f5" font-size="16" font-weight="700">buncord</text>
+    <rect x="166" y="56" width="36" height="18" rx="4" fill="#5865f2"/>
+    <text x="184" y="69" fill="#fff" font-size="10" font-weight="700" text-anchor="middle">APP</text>
+    <text x="214" y="70" fill="#949ba4" font-size="12">Today at 12:00</text>
+    <rect x="88" y="87" width="680" height="161" rx="10" fill="#2b2d31" stroke="#41434a"/>
+    <path d="M98 87h-6a4 4 0 0 0-4 4v153a4 4 0 0 0 4 4h6" fill="#ff3b92"/>
+    <text x="114" y="122" fill="#f2f3f5" font-size="24" font-weight="750">Release ready</text>
+    <text x="114" y="151" fill="#d7d9dc" font-size="16">Build rich Discord messages with less ceremony.</text>
+    <path d="M114 175h628" stroke="#46484e"/>
+    <rect x="114" y="192" width="145" height="36" rx="5" fill="#248046"/>
+    <text x="186.5" y="215" fill="#fff" font-size="14" font-weight="600" text-anchor="middle">Acknowledge</text>
+    <rect x="269" y="192" width="170" height="36" rx="5" fill="#4e5058"/>
+    <text x="344" y="215" fill="#fff" font-size="14" font-weight="600" text-anchor="middle">Documentation</text>
+    <path d="M417 203h8v8m0-8-10 10m-1-8h-3v12h12v-3" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

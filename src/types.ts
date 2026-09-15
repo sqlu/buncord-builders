@@ -6,7 +6,6 @@ import type {
   ChannelType,
   SelectMenuDefaultValueType,
 } from './enums.ts';
-import type { FileUploadRange } from './utils/guards.ts';
 
 /**
  * A color in RGB format.
@@ -18,6 +17,16 @@ export type RGBTuple = [r: number, g: number, b: number];
  * Discord snowflake ID.
  */
 export type Snowflake = string;
+
+/**
+ * A URL or attachment reference used by media-backed components.
+ *
+ * @see {@link https://docs.discord.com/developers/components/reference#unfurled-media-item-structure}
+ */
+export interface APIUnfurledMediaItem {
+  /** The media source, either an arbitrary URL or an `attachment://<filename>` reference (max 2048 characters). */
+  url: string;
+}
 
 /**
  * Emoji used in buttons and select menus.
@@ -298,7 +307,7 @@ export interface APIThumbnailComponent {
   /** The component type (always ComponentType.Thumbnail). */
   type: ComponentType.Thumbnail;
   /** The media object containing the source image URL. */
-  media: { url: string };
+  media: APIUnfurledMediaItem;
   /** Optional descriptive alt text for accessibility. */
   description?: string;
   /** Whether to blur the image and mark it as a spoiler. */
@@ -312,7 +321,7 @@ export interface APIThumbnailComponent {
  */
 export interface APIMediaGalleryItem {
   /** The media object containing the source asset URL. */
-  media: { url: string };
+  media: APIUnfurledMediaItem;
   /** Optional descriptive alt text for accessibility. */
   description?: string;
   /** Whether to blur the item and mark it as a spoiler. */
@@ -337,10 +346,14 @@ export interface APIMediaGalleryComponent {
 export interface APIFileComponent {
   /** The component type (always ComponentType.File). */
   type: ComponentType.File;
-  /** The file object containing the source asset attachment URL. */
-  file: { url: string };
+  /** The file object containing the source asset attachment URL. Does not support arbitrary URLs. */
+  file: APIUnfurledMediaItem;
   /** Whether to blur the attachment preview. */
   spoiler?: boolean;
+  /** The name of the attached file. Received only, it cannot be set. */
+  name?: string;
+  /** The size of the attached file in bytes. Received only, it cannot be set. */
+  size?: number;
   /** Optional database/Discord ID for tracking. */
   id?: number;
 }
@@ -422,7 +435,6 @@ export interface APILabelComponent {
  */
 export type APIModalComponent =
   | APIActionRowComponent<APITextInputComponent>
-  | APISectionComponent
   | APITextDisplayComponent
   | APILabelComponent;
 
@@ -471,12 +483,14 @@ export interface APIFileUploadComponent {
   type: ComponentType.FileUpload;
   /** The developer-defined identifier triggered on file uploads. */
   custom_id: string;
-  /** The minimum number of files the user must upload (0 to 10). */
-  min_values?: FileUploadRange;
-  /** The maximum number of files the user can upload (1 to 10). */
-  max_values?: FileUploadRange;
-  /** Whether upload submission is required. */
+  /** The minimum number of files the user must upload (0 to 10). Defaults to 0. */
+  min_values?: number;
+  /** The maximum number of files the user can upload (1 to 10). Defaults to 10. */
+  max_values?: number;
+  /** Whether upload submission is required. Defaults to false. */
   required?: boolean;
+  /** The file extensions the user is allowed to upload (max 10). Send only, it is never received. */
+  file_types?: string[];
   /** Optional database/Discord ID for tracking. */
   id?: number;
 }
@@ -539,7 +553,7 @@ export interface APICheckboxGroupComponent {
   max_values?: number;
   /** Whether checking checkboxes is required. */
   required?: boolean;
-  /** The list of selectable checkbox options (2 to 10 options). */
+  /** The list of selectable checkbox options (1 to 10 options). */
   options: APICheckboxGroupOption[];
   /** Optional database/Discord ID for tracking. */
   id?: number;
@@ -558,5 +572,3 @@ export interface APICheckboxComponent {
   /** Optional database/Discord ID for tracking. */
   id?: number;
 }
-
-export type { ChannelType };

@@ -78,9 +78,8 @@ describe('SmartLayoutBuilder', () => {
     for (let i = 0; i < 5; i++) {
       builder.addSelectMenu(makeSelect(`sel${i}`));
     }
-    builder.addButtons(makeBtn('extra'));
-
-    expect(() => builder.build()).toThrow('maximum of 5');
+    expect(() => builder.addButtons(makeBtn('extra'))).toThrow('maximum of 5');
+    expect(builder.build()).toHaveLength(5);
   });
 
   it('returns empty array when nothing added', () => {

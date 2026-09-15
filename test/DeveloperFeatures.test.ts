@@ -17,7 +17,7 @@ import {
   FileUploadBuilder,
   ThumbnailBuilder,
   FileBuilder,
-  MediaGalleryBuilder,
+
   MediaGalleryItemBuilder,
   StringSelectMenuBuilder,
   SectionBuilder,
@@ -194,15 +194,14 @@ describe('Developer Features', () => {
         options: [{ label: 'Opt 1', value: '1' }],
       });
 
-      const compileTimeOnly = () => {
+      expect(() => {
         // @ts-expect-error - Mixing buttons and select menus is forbidden
         new ActionRowBuilder().addComponents(btn, select);
-
+      }).toThrow();
+      expect(() => {
         // @ts-expect-error - Too many select menus (> 1)
         new ActionRowBuilder().addComponents(select, select);
-      };
-
-      compileTimeOnly();
+      }).toThrow();
 
       expect(() => {
         // @ts-expect-error - Too many buttons (> 5)
@@ -332,16 +331,27 @@ describe('Developer Features', () => {
       expect(() => emptyModal.toJSON()).toThrow('components must have between 1 and 5 entries');
     });
 
-    it('SelectMenu default values type preservation with enum and custom strings', () => {
+    // A user select only accepts default values of type "user". Anything else is
+    // rejected by Discord, so the builder rejects it too.
+    // https://docs.discord.com/developers/components/reference#user-select
+    it('SelectMenu default values reject types the menu does not accept', () => {
       const menu = new UserSelectMenuBuilder({
         customId: 'users',
       });
+
       menu.setDefaultUsers([
-        { id: '123', type: 'custom_type' },
+        { id: '123' },
         { id: '456', type: SelectMenuDefaultValueType.User },
       ]);
-      expect(menu.defaultValues[0]?.type).toBe('custom_type');
+      expect(menu.defaultValues[0]?.type).toBe(SelectMenuDefaultValueType.User);
       expect(menu.defaultValues[1]?.type).toBe(SelectMenuDefaultValueType.User);
+
+      expect(() => menu.setDefaultUsers([{ id: '789', type: 'custom_type' }])).toThrow(
+        'default type "custom_type" is invalid',
+      );
+      expect(() => menu.setDefaultUsers([{ id: '789', type: SelectMenuDefaultValueType.Role }])).toThrow(
+        'must be one of: user',
+      );
     });
 
     it('Omit empty arrays in select menus and check whitelisting', () => {

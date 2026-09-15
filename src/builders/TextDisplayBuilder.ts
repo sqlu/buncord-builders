@@ -8,7 +8,7 @@ import { BaseComponent, resolveRaw } from './base.ts';
  * @template Content The markdown content string literal.
  */
 export interface TextDisplayOptions<Content extends string = string> {
-  /** The markdown content to display (1–4000 characters). */
+  /** The markdown content to display (1-4000 characters). */
   content?: Content & CheckMinLength<Content, 1, 'content'> & CheckMaxLength<Content, 4000, 'content'>;
 }
 
@@ -29,7 +29,7 @@ export interface TextDisplayBuilderInstance extends TextDisplayBuilderClass {}
  * const text = new TextDisplayBuilder({ content: '## buncord-builders' });
  * ```
  *
- * @see {@link https://discord.com/developers/docs/components/reference#text-display Discord Docs - Text Display}
+ * @see {@link https://docs.discord.com/developers/components/reference#text-display Discord Docs - Text Display}
  */
 class TextDisplayBuilderClass extends BaseComponent<Partial<APITextDisplayComponent>> {
   public override readonly type = ComponentType.TextDisplay;
@@ -85,9 +85,6 @@ class TextDisplayBuilderClass extends BaseComponent<Partial<APITextDisplayCompon
    * @returns The JSON representation.
    */
   override toJSON(): APITextDisplayComponent {
-    if (this.id !== undefined) {
-      (this.data as Record<string, unknown>).id = this.id;
-    }
     return this.data as APITextDisplayComponent;
   }
 }

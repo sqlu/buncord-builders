@@ -24,7 +24,7 @@ import {
 
 describe('FinalCoverage', () => {
 
-  // ─── ButtonBuilder ──────────────────────────────────────────────────────────
+  // --- ButtonBuilder ----------------------------------------------------------
 
   describe('ButtonBuilder.setEmoji', () => {
     it('sets an emoji on the button', () => {
@@ -41,7 +41,7 @@ describe('FinalCoverage', () => {
     });
   });
 
-  // ─── CheckboxGroupOptionBuilder setters ─────────────────────────────────────
+  // --- CheckboxGroupOptionBuilder setters -------------------------------------
 
   describe('CheckboxGroupOptionBuilder fluent setters', () => {
     it('setValue sets the value', () => {
@@ -84,7 +84,7 @@ describe('FinalCoverage', () => {
     });
   });
 
-  // ─── RadioGroupOptionBuilder setters ────────────────────────────────────────
+  // --- RadioGroupOptionBuilder setters ----------------------------------------
 
   describe('RadioGroupOptionBuilder fluent setters', () => {
     it('setValue sets the value', () => {
@@ -115,7 +115,7 @@ describe('FinalCoverage', () => {
     });
   });
 
-  // ─── StringSelectMenuOptionBuilder setters ───────────────────────────────────
+  // --- StringSelectMenuOptionBuilder setters -----------------------------------
 
   describe('StringSelectMenuOptionBuilder fluent setters', () => {
     it('setLabel sets the label', () => {
@@ -146,7 +146,7 @@ describe('FinalCoverage', () => {
     });
   });
 
-  // ─── MediaGalleryBuilder.addItems ───────────────────────────────────────────
+  // --- MediaGalleryBuilder.addItems -------------------------------------------
 
   describe('MediaGalleryBuilder.addItems', () => {
     it('adds items to an empty gallery', () => {
@@ -175,7 +175,7 @@ describe('FinalCoverage', () => {
     });
   });
 
-  // ─── SectionBuilder.addTextDisplayComponents ─────────────────────────────────
+  // --- SectionBuilder.addTextDisplayComponents ---------------------------------
 
   describe('SectionBuilder.addTextDisplayComponents', () => {
     it('adds text display components to an empty section', () => {
@@ -201,7 +201,7 @@ describe('FinalCoverage', () => {
     });
   });
 
-  // ─── SelectMenuBuilders – protected base methods via subclass ────────────────
+  // --- SelectMenuBuilders - protected base methods via subclass ----------------
 
   describe('BaseSelectMenu protected initCommon and initAuto', () => {
     // We expose these via a concrete subclass to exercise the protected methods directly.
@@ -270,7 +270,7 @@ describe('FinalCoverage', () => {
   });
 
 
-  // ─── src/index.ts Bun runtime guard ─────────────────────────────────────────
+  // --- src/index.ts Bun runtime guard -----------------------------------------
   // Le guard "if (typeof Bun === 'undefined') throw" ne peut pas être couvert via
   // un import normal dans Bun. On vérifie qu'il est là dans le source et qu'il
   // protège bien le runtime. Ce comportement est testé implicitement par le fait
@@ -278,7 +278,7 @@ describe('FinalCoverage', () => {
   // La ligne 1-4 de src/index.ts est une dead branch dans le runtime Bun ;
   // on la documente ici plutôt que de tester l'impossible.
 
-  // ─── factory.ts – ComponentFactory constructor ───────────────────────────────
+  // --- factory.ts - ComponentFactory constructor -------------------------------
 
   describe('ComponentFactory constructor', () => {
     it('can be instantiated (unused but fulfills function coverage)', () => {
@@ -289,7 +289,7 @@ describe('FinalCoverage', () => {
     });
   });
 
-  // ─── base.ts – clone() error branch ─────────────────────────────────────────
+  // --- base.ts - clone() error branch -----------------------------------------
 
   describe('BaseComponent.clone error branch', () => {
     it('throws if builder has no static from() method', () => {
@@ -302,7 +302,7 @@ describe('FinalCoverage', () => {
     });
   });
 
-  // ─── CheckboxGroupBuilder – empty constructor ─────────────────────────────────
+  // --- CheckboxGroupBuilder - empty constructor ---------------------------------
 
   describe('CheckboxGroupBuilder no-args constructor', () => {
     it('creates an empty builder without args', () => {
@@ -316,7 +316,7 @@ describe('FinalCoverage', () => {
     });
   });
 
-  // ─── RadioGroupBuilder – empty constructor ─────────────────────────────────
+  // --- RadioGroupBuilder - empty constructor ---------------------------------
 
   describe('RadioGroupBuilder no-args constructor', () => {
     it('creates an empty builder without args', () => {
@@ -325,7 +325,7 @@ describe('FinalCoverage', () => {
     });
   });
 
-  // ─── UserSelectMenuBuilder – no-args constructor ─────────────────────────────
+  // --- UserSelectMenuBuilder - no-args constructor -----------------------------
 
   describe('UserSelectMenuBuilder no-args constructor', () => {
     it('creates an empty builder without args', () => {
@@ -334,7 +334,7 @@ describe('FinalCoverage', () => {
     });
   });
 
-  // ─── auditTree – toJSON throws path ──────────────────────────────────────────
+  // --- auditTree - toJSON throws path ------------------------------------------
 
   describe('BaseComponent.auditTree toJSON throws branch', () => {
     it('reports a warning when toJSON throws and falls back to .data', () => {
@@ -349,7 +349,7 @@ describe('FinalCoverage', () => {
     });
   });
 
-  // ─── auditTree – context: 'modal' flag ────────────────────────────────────────
+  // --- auditTree - context: 'modal' flag ----------------------------------------
 
   describe('BaseComponent.auditTree context modal', () => {
     it('accepts context modal option', () => {
@@ -365,7 +365,7 @@ describe('FinalCoverage', () => {
     });
   });
 
-  // ─── SectionBuilder.from – covers inner map arrow ────────────────────────────
+  // --- SectionBuilder.from - covers inner map arrow ----------------------------
 
   describe('SectionBuilder.from', () => {
     it('deserializes a section with components and accessory', () => {
@@ -396,7 +396,7 @@ describe('FinalCoverage', () => {
     });
   });
 
-  // ─── SectionBuilder.setButtonAccessory and setThumbnailAccessory ──────────────
+  // --- SectionBuilder.setButtonAccessory and setThumbnailAccessory --------------
 
   describe('SectionBuilder accessory setters', () => {
     it('setButtonAccessory delegates to setAccessory', () => {
@@ -414,7 +414,7 @@ describe('FinalCoverage', () => {
     });
   });
 
-  // ─── base.ts – scanTreeLimits file/media/files branches ───────────────────────
+  // --- base.ts - scanTreeLimits file/media/files branches -----------------------
 
   describe('BaseComponent scanTreeLimits deeper branches', () => {
     it('traverses file, media, and files fields in validateTreeLimits', () => {
@@ -428,7 +428,7 @@ describe('FinalCoverage', () => {
         media: { type: ComponentType.Thumbnail, url: 'https://example.com/img.jpg' },
       };
       const issues = BaseComponent.auditTree(payload, { structured: true });
-      // pas d'erreurs attendues – juste vérifier que ça ne crashe pas
+      // pas d'erreurs attendues - juste vérifier que ça ne crashe pas
       expect(Array.isArray(issues)).toBe(true);
     });
   });

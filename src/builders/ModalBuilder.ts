@@ -2,7 +2,7 @@ import type {
   CheckArrayLength,
   CheckMaxLength,
   CheckMinLength,
-  GetLabel,
+
   GetCustomIdField,
   CheckStringConstraints,
   ExtractCustomId,
@@ -12,6 +12,13 @@ import type { LabelBuilder } from './LabelBuilder.ts';
 import type { TextDisplayBuilder } from './TextDisplayBuilder.ts';
 import type { ActionRowBuilder } from './ActionRowBuilder.ts';
 import type { APIModalStructure, APIModalComponent } from '../types.ts';
+
+/** Maximum length of a modal title. */
+const MAX_TITLE_LENGTH = 45;
+
+/** Minimum and maximum number of top-level components in a modal. */
+const MIN_COMPONENTS = 1;
+const MAX_COMPONENTS = 5;
 
 /**
  * Valid layout components that can be placed inside a Modal as rows.
@@ -95,7 +102,7 @@ export interface ModalBuilderInstance<
  * });
  * ```
  *
- * @see {@link https://discord.com/developers/docs/interactions/receiving-and-responding#interaction-response-object-modal Discord Docs - Modal}
+ * @see {@link https://docs.discord.com/developers/interactions/receiving-and-responding#interaction-callback-modal-data-structure Discord Docs - Modal}
  */
 class ModalBuilderClass<
   CustomId extends string = string,
@@ -165,8 +172,8 @@ class ModalBuilderClass<
 
     if (opts.title !== undefined) {
       if (opts.title.length < 1) throw new Error('title is required');
-      if (opts.title.length > 45) {
-        throw new Error(`title is too long, max is 45 characters but got ${opts.title.length}`);
+      if (opts.title.length > MAX_TITLE_LENGTH) {
+        throw new Error(`title is too long, max is ${MAX_TITLE_LENGTH} characters but got ${opts.title.length}`);
       }
       this.data.title = opts.title;
     }
@@ -193,8 +200,11 @@ class ModalBuilderClass<
    * @throws If title exceeds 45 characters
    */
   setTitle(title: CheckMinLength<string, 1, 'title'> & CheckMaxLength<string, 45, 'title'>): this {
-    if (title.length > 45) {
-      throw new Error(`title is too long, max is 45 characters but got ${title.length}`);
+    if (title.length < 1) {
+      throw new Error('title is required');
+    }
+    if (title.length > MAX_TITLE_LENGTH) {
+      throw new Error(`title is too long, max is ${MAX_TITLE_LENGTH} characters but got ${title.length}`);
     }
     this.data.title = title;
     return this;
@@ -225,9 +235,9 @@ class ModalBuilderClass<
   setComponents<const NewComponents extends readonly ModalComponent[]>(
     components: NewComponents & CheckArrayLength<NewComponents, 1, 5, 'components'>,
   ): ModalBuilderClass<CustomId, NewComponents> {
-    if (components.length < 1 || components.length > 5)
+    if (components.length < MIN_COMPONENTS || components.length > MAX_COMPONENTS)
       throw new Error(
-        `components must have between 1 and 5 entries, but got ${components.length}`,
+        `components must have between ${MIN_COMPONENTS} and ${MAX_COMPONENTS} entries, but got ${components.length}`,
       );
     this.data.components = components as unknown as ModalComponent[];
     return this as unknown as ModalBuilderClass<CustomId, NewComponents>;
@@ -245,8 +255,8 @@ class ModalBuilderClass<
     if (!this.data.components) this.data.components = [];
     const cur = this.data.components.length;
     const add = components.length;
-    if (cur + add > 5)
-      throw new Error("components size can't exceed 5");
+    if (cur + add > MAX_COMPONENTS)
+      throw new Error(`components size can't exceed ${MAX_COMPONENTS}`);
     for (let i = 0; i < add; i++) {
       this.data.components.push(components[i]!);
     }
@@ -282,9 +292,9 @@ class ModalBuilderClass<
    * @throws If components count is not between 1 and 5
    */
   setLabelComponents(components: LabelBuilder[]): this {
-    if (components.length < 1 || components.length > 5)
+    if (components.length < MIN_COMPONENTS || components.length > MAX_COMPONENTS)
       throw new Error(
-        `components must have between 1 and 5 entries, but got ${components.length}`,
+        `components must have between ${MIN_COMPONENTS} and ${MAX_COMPONENTS} entries, but got ${components.length}`,
       );
     this.data.components = components;
     return this;
@@ -297,9 +307,9 @@ class ModalBuilderClass<
    * @throws If components count is not between 1 and 5
    */
   setTextDisplayComponents(components: TextDisplayBuilder[]): this {
-    if (components.length < 1 || components.length > 5)
+    if (components.length < MIN_COMPONENTS || components.length > MAX_COMPONENTS)
       throw new Error(
-        `components must have between 1 and 5 entries, but got ${components.length}`,
+        `components must have between ${MIN_COMPONENTS} and ${MAX_COMPONENTS} entries, but got ${components.length}`,
       );
     this.data.components = components;
     return this;
@@ -324,9 +334,9 @@ class ModalBuilderClass<
       deleteCount,
       ...components,
     );
-    if (this.data.components.length < 1 || this.data.components.length > 5)
+    if (this.data.components.length < MIN_COMPONENTS || this.data.components.length > MAX_COMPONENTS)
       throw new Error(
-        `components must have between 1 and 5 entries, but got ${this.data.components.length}`,
+        `components must have between ${MIN_COMPONENTS} and ${MAX_COMPONENTS} entries, but got ${this.data.components.length}`,
       );
     return this;
   }
@@ -350,9 +360,9 @@ class ModalBuilderClass<
       deleteCount,
       ...components,
     );
-    if (this.data.components.length < 1 || this.data.components.length > 5)
+    if (this.data.components.length < MIN_COMPONENTS || this.data.components.length > MAX_COMPONENTS)
       throw new Error(
-        `components must have between 1 and 5 entries, but got ${this.data.components.length}`,
+        `components must have between ${MIN_COMPONENTS} and ${MAX_COMPONENTS} entries, but got ${this.data.components.length}`,
       );
     return this;
   }
@@ -362,7 +372,7 @@ class ModalBuilderClass<
    * @returns A deep copy of this builder
    */
   clone(): this {
-    return ModalBuilderClass.from(this.toJSON()) as unknown as this;
+    return ModalBuilderClass.from(structuredClone(this.toJSON())) as unknown as this;
   }
 
   /**
@@ -370,21 +380,29 @@ class ModalBuilderClass<
    * @returns The serialized JSON payload structure.
    */
   toJSON(): APIModalStructure {
+    const title = this.data.title;
+    if (title === undefined) throw new Error('title is required to serialize a modal');
+
+    const customId = this.data.custom_id;
+    if (customId === undefined) throw new Error('customId is required to serialize a modal');
+
     const comps = this.data.components;
     const len = comps ? comps.length : 0;
-    if (len < 1 || len > 5) {
-      throw new Error(`components must have between 1 and 5 entries, but got ${len}`);
+    if (len < MIN_COMPONENTS || len > MAX_COMPONENTS) {
+      throw new Error(`components must have between ${MIN_COMPONENTS} and ${MAX_COMPONENTS} entries, but got ${len}`);
     }
+
     const serializedComps = new Array<APIModalComponent>(len);
     for (let i = 0; i < len; i++) {
       serializedComps[i] = comps![i]!.toJSON() as APIModalComponent;
     }
+
     const payload: APIModalStructure = {
-      title: this.data.title!,
-      custom_id: this.data.custom_id!,
+      title,
+      custom_id: customId,
       components: serializedComps,
     };
-    BaseComponent.validateTreeLimits(payload);
+    BaseComponent.validateTreeLimits(payload, 'modal');
     return payload;
   }
 }

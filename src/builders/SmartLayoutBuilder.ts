@@ -24,6 +24,16 @@ type AnySelectMenu =
  */
 type LayoutComponent = ButtonBuilder | AnySelectMenu;
 
+const MAX_BUTTONS_PER_ROW = 5;
+const MAX_ROWS = 5;
+const MAX_V2_COMPONENTS = 40;
+
+/** Discord message format used to validate the generated layout. */
+export interface SmartLayoutOptions {
+  /** Legacy messages allow 5 rows; Components V2 allows 40 total components, including rows. */
+  mode?: 'legacy' | 'componentsV2';
+}
+
 const SELECT_TYPES = new Set<ComponentType>([
   ComponentType.StringSelect,
   ComponentType.UserSelect,
@@ -38,7 +48,8 @@ const SELECT_TYPES = new Set<ComponentType>([
  * **Rules:**
  * - Buttons pack sequentially into `ActionRow`s, up to 5 per row.
  * - Select menus always get their own dedicated `ActionRow`.
- * - Throws if the result would exceed the Discord limit of 5 `ActionRow`s per message.
+ * - Legacy mode permits at most 5 rows (the default).
+ * - Components V2 mode permits at most 40 components, including generated rows.
  *
  * @example
  * ```ts
@@ -50,80 +61,116 @@ const SELECT_TYPES = new Set<ComponentType>([
  * // -> [ActionRow[starBtn, sponsorBtn], ActionRow[discordChannelMenu], ActionRow[snayzProfileBtn]]
  * ```
  *
- * @see {@link https://discord.com/developers/docs/components/reference#action-row Discord Docs - Action Row}
+ * @see {@link https://docs.discord.com/developers/components/reference#action-row Discord Docs - Action Row}
  */
 export class SmartLayoutBuilder {
   private readonly components: LayoutComponent[] = [];
-  private _pendingRow: LayoutComponent[] = [];
-  private _rows: ActionRowBuilder[] = [];
+  private readonly mode: 'legacy' | 'componentsV2';
 
-  constructor() {}
+  /** Creates an empty layout queue. */
+  constructor(options: SmartLayoutOptions = {}) {
+    const mode = options.mode ?? 'legacy';
+    if (mode !== 'legacy' && mode !== 'componentsV2') throw new Error(`invalid layout mode ${mode}`);
+    this.mode = mode;
+  }
+
+  /** Validate both existing and prospective entries before allocating rows or changing the queue. */
+  private validateComponents(additions: readonly LayoutComponent[] = []): void {
+    const count = this.components.length + additions.length;
+    if (this.mode === 'legacy' && count > MAX_ROWS * MAX_BUTTONS_PER_ROW) {
+      throw new Error(`too many action rows, discord allows a maximum of ${MAX_ROWS}`);
+    }
+    if (this.mode === 'componentsV2' && count >= MAX_V2_COMPONENTS) {
+      throw new Error(`too many components, discord limit is ${MAX_V2_COMPONENTS} including action rows`);
+    }
+    let rows = 0;
+    let pendingButtons = 0;
+    for (let i = 0; i < count; i++) {
+      const component = i < this.components.length ? this.components[i] : additions[i - this.components.length];
+      const type = component?.type;
+      if (type === ComponentType.Button) {
+        if (pendingButtons === 0 || pendingButtons === MAX_BUTTONS_PER_ROW) {
+          rows++;
+          pendingButtons = 0;
+        }
+        pendingButtons++;
+      } else if (SELECT_TYPES.has(type as ComponentType)) {
+        rows++;
+        pendingButtons = 0;
+      } else {
+        throw new Error(`invalid layout component type ${type}`);
+      }
+      if (this.mode === 'legacy' && rows > MAX_ROWS) {
+        throw new Error(`too many action rows, got ${rows} but discord allows a maximum of ${MAX_ROWS}`);
+      }
+      if (this.mode === 'componentsV2' && count + rows > MAX_V2_COMPONENTS) {
+        throw new Error(`too many components, discord limit is ${MAX_V2_COMPONENTS} including action rows`);
+      }
+    }
+  }
 
   /**
    * Adds one or more buttons to the layout queue.
-   * @param buttons Buttons to add
-   * @returns The layout builder instance
+   * @param buttons - Buttons to add.
+   * @returns The layout builder instance.
    */
   addButtons(...buttons: ButtonBuilder[]): this {
-    this.components.push(...buttons);
+    this.validateComponents(buttons);
+    for (let i = 0; i < buttons.length; i++) {
+      if (buttons[i]?.type !== ComponentType.Button) throw new Error('addButtons requires Button components');
+    }
+    for (let i = 0; i < buttons.length; i++) this.components.push(buttons[i]!);
     return this;
   }
 
   /**
-   * Adds a select menu to the layout queue (takes up a dedicated row).
-   * @param menu Select menu to add
-   * @returns The layout builder instance
+   * Adds a select menu to the layout queue (it takes up a dedicated row).
+   * @param menu - Select menu to add.
+   * @returns The layout builder instance.
    */
   addSelectMenu(menu: AnySelectMenu): this {
+    if (!SELECT_TYPES.has(menu?.type)) throw new Error('addSelectMenu requires a select menu component');
+    this.validateComponents([menu]);
     this.components.push(menu);
     return this;
   }
 
-  private _flush(): void {
-    if (this._pendingRow.length > 0) {
-      this._rows.push(
-        new ActionRowBuilder({
-          components: this._pendingRow as unknown as ActionRowComponent[],
-        }),
-      );
-      this._pendingRow = [];
-    }
-  }
-
   /**
-   * Organizes the added components into an array of ActionRowBuilders.
-   * @returns The array of configured ActionRowBuilders
-   * @throws If more than 5 ActionRows would be generated
+   * Organizes the queued components into valid ActionRows.
+   *
+   * @returns The generated rows, in insertion order.
+   * @throws If the queued components exceed the selected message format's limits.
    */
   build(): ActionRowBuilder[] {
-    this._rows = [];
-    this._pendingRow = [];
+    this.validateComponents();
+    const rows: ActionRowBuilder[] = [];
+    let pending: LayoutComponent[] | null = null;
 
-    const total = this.components.length;
-    for (let i = 0; i < total; i++) {
-      const comp = this.components[i]!;
-      const isSelect = SELECT_TYPES.has((comp as { type: number }).type);
+    for (let i = 0; i < this.components.length; i++) {
+      const component = this.components[i]!;
 
-      if (isSelect) {
-        this._flush();
-        this._rows.push(
-          new ActionRowBuilder({
-            components: [comp] as unknown as ActionRowComponent[],
-          }),
-        );
-      } else {
-        if (this._pendingRow.length >= 5) this._flush();
-        this._pendingRow.push(comp);
+      if (SELECT_TYPES.has((component as { type: number }).type)) {
+        // A select menu always takes a row of its own, so close the pending one.
+        if (pending) {
+          rows.push(new ActionRowBuilder({ components: pending as unknown as ActionRowComponent[] }));
+          pending = null;
+        }
+        rows.push(new ActionRowBuilder({ components: [component] as unknown as ActionRowComponent[] }));
+        continue;
       }
+
+      if (pending && pending.length >= MAX_BUTTONS_PER_ROW) {
+        rows.push(new ActionRowBuilder({ components: pending as unknown as ActionRowComponent[] }));
+        pending = null;
+      }
+      if (pending) pending.push(component);
+      else pending = [component];
     }
 
-    this._flush();
+    if (pending) {
+      rows.push(new ActionRowBuilder({ components: pending as unknown as ActionRowComponent[] }));
+    }
 
-    if (this._rows.length > 5)
-      throw new Error(
-        `too many action rows, got ${this._rows.length} but discord allows a maximum of 5`,
-      );
-
-    return this._rows;
+    return rows;
   }
 }
