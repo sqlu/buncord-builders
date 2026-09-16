@@ -79,7 +79,7 @@ import {
 } from '@buncord/builders';
 
 const components = [
-  new ContainerBuilder({ accentColor: [255, 59, 146] }).addComponents(
+  new ContainerBuilder({ accentColor: [49, 120, 198] }).addComponents(
     new TextDisplayBuilder({
       content: '# Release ready\nBuild rich Discord messages with less ceremony.',
     }),
