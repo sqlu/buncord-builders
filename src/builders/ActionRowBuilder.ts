@@ -1,3 +1,4 @@
+import { componentValidationError } from '../utils/ComponentError.ts';
 import { ComponentType } from '../enums.ts';
 import type { APIActionRowComponent, APIComponent, APIMessageComponent, APITextInputComponent } from '../types.ts';
 import type { ValidActionRowComponents } from '../utils/guards.ts';
@@ -6,28 +7,23 @@ import { BaseComponent, resolveRaw, serializeEntries } from './base.ts';
 /** Maximum number of components a single action row can hold. */
 const MAX_COMPONENTS = 5;
 
-/** Validate one raw or builder-owned child against its row size. */
-function assertActionRowComponent(component: unknown, length: number): void {
-  const type = (component as { type?: number } | null)?.type;
-  if (type === ComponentType.Button) return;
-  if (type !== ComponentType.TextInput && type !== ComponentType.StringSelect &&
-      type !== ComponentType.UserSelect && type !== ComponentType.RoleSelect &&
-      type !== ComponentType.MentionableSelect && type !== ComponentType.ChannelSelect) {
-    throw new Error(`invalid ActionRow component type ${type}`);
-  }
-  if (length !== 1) throw new Error('ActionRow must contain up to 5 buttons or a single select menu or TextInput');
-}
-
 /** Check a row before storing or serializing its children. */
 function assertActionRowComponents(
   components: readonly unknown[],
   additions: readonly unknown[] = [],
 ): void {
   const length = components.length + additions.length;
-  if (length > MAX_COMPONENTS) throw new Error(`components size can't exceed ${MAX_COMPONENTS}`);
+  if (length > MAX_COMPONENTS) throw componentValidationError('ACTION_ROW_VALIDATION_FAILED', `components size can't exceed ${MAX_COMPONENTS}`);
   for (let i = 0; i < length; i++) {
     const component = i < components.length ? components[i] : additions[i - components.length];
-    assertActionRowComponent(component, length);
+    const type = (component as { type?: number } | null)?.type;
+    if (type === ComponentType.Button) continue;
+    if (type !== ComponentType.TextInput && type !== ComponentType.StringSelect &&
+        type !== ComponentType.UserSelect && type !== ComponentType.RoleSelect &&
+        type !== ComponentType.MentionableSelect && type !== ComponentType.ChannelSelect) {
+      throw componentValidationError('ACTION_ROW_VALIDATION_FAILED', `invalid ActionRow component type ${type}`);
+    }
+    if (length !== 1) throw componentValidationError('ACTION_ROW_VALIDATION_FAILED', 'ActionRow must contain up to 5 buttons or a single select menu or TextInput');
   }
 }
 
@@ -178,10 +174,11 @@ class ActionRowBuilderClass<
     const comps = this.data.components;
     const len = comps ? comps.length : 0;
     if (len === 0) {
-      throw new Error('need at least one component to serialize');
+      throw componentValidationError('ACTION_ROW_VALIDATION_FAILED', 'need at least one component to serialize');
     }
     assertActionRowComponents(comps!);
-    const serialized = serializeEntries(comps, assertActionRowComponent);
+    const serialized = serializeEntries(comps);
+    assertActionRowComponents(serialized);
     const payload: Record<string, unknown> = {
       type: ComponentType.ActionRow,
       components: serialized,

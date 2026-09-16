@@ -12,6 +12,7 @@ import type {
 } from '../utils/guards.ts';
 import { BaseComponent, resolveRaw, serializeEntries } from './base.ts';
 import { validateOptionFields } from '../utils/OptionValidation.ts';
+import { componentError, componentValidationError } from '../utils/ComponentError.ts';
 
 /** Bounds of a checkbox group's option list. */
 const MIN_OPTIONS = 1;
@@ -175,18 +176,18 @@ class CheckboxGroupOptionBuilderClass {
     if (!opts) return;
     const val = opts.value as string | undefined;
     if (val !== undefined) {
-      if (val.length < 1) throw new Error('value needs to be at least 1 character');
-      if (val.length > 100) throw new Error(`value is too long, max is 100 characters but got ${val.length}`);
+      if (val.length < 1) throw componentValidationError('CHECKBOX_GROUP_VALIDATION_FAILED', 'value needs to be at least 1 character');
+      if (val.length > 100) throw componentValidationError('CHECKBOX_GROUP_VALIDATION_FAILED', `value is too long, max is 100 characters but got ${val.length}`);
       this.data.value = val;
     }
     const lbl = opts.label as string | undefined;
     if (lbl !== undefined) {
-      if (lbl.length > 100) throw new Error(`label is too long, max is 100 characters but got ${lbl.length}`);
+      if (lbl.length > 100) throw componentValidationError('CHECKBOX_GROUP_VALIDATION_FAILED', `label is too long, max is 100 characters but got ${lbl.length}`);
       this.data.label = lbl;
     }
     if (opts.description !== undefined) {
       const d = opts.description as string;
-      if (d.length > 100) throw new Error(`description is too long, max is 100 characters but got ${d.length}`);
+      if (d.length > 100) throw componentValidationError('CHECKBOX_GROUP_VALIDATION_FAILED', `description is too long, max is 100 characters but got ${d.length}`);
       this.data.description = d;
     }
     if (opts.default !== undefined) this.data.default = opts.default;
@@ -200,10 +201,10 @@ class CheckboxGroupOptionBuilderClass {
    */
   setValue(val: CheckMinLength<string, 1, 'value'> & CheckMaxLength<string, 100, 'value'>): this {
     if (val.length < 1) {
-      throw new Error('value needs to be at least 1 character');
+      throw componentValidationError('CHECKBOX_GROUP_VALIDATION_FAILED', 'value needs to be at least 1 character');
     }
     if (val.length > 100) {
-      throw new Error(`value is too long, max is 100 characters but got ${val.length}`);
+      throw componentValidationError('CHECKBOX_GROUP_VALIDATION_FAILED', `value is too long, max is 100 characters but got ${val.length}`);
     }
     this.data.value = val;
     return this;
@@ -217,7 +218,7 @@ class CheckboxGroupOptionBuilderClass {
    */
   setLabel(lbl: CheckMaxLength<string, 100, 'label'>): this {
     if (lbl.length > 100) {
-      throw new Error(`label is too long, max is 100 characters but got ${lbl.length}`);
+      throw componentValidationError('CHECKBOX_GROUP_VALIDATION_FAILED', `label is too long, max is 100 characters but got ${lbl.length}`);
     }
     this.data.label = lbl;
     return this;
@@ -231,7 +232,7 @@ class CheckboxGroupOptionBuilderClass {
    */
   setDescription(desc: CheckMaxLength<string, 100, 'description'>): this {
     if (desc.length > 100) {
-      throw new Error(`description is too long, max is 100 characters but got ${desc.length}`);
+      throw componentValidationError('CHECKBOX_GROUP_VALIDATION_FAILED', `description is too long, max is 100 characters but got ${desc.length}`);
     }
     this.data.description = desc;
     return this;
@@ -388,10 +389,16 @@ class CheckboxGroupBuilderClass extends BaseComponent<Partial<APICheckboxGroupCo
     if (min !== undefined) this.validateRange(min, 0, 10, 'minValues');
     if (max !== undefined) this.validateRange(max, 1, 10, 'maxValues');
     if (min !== undefined && max !== undefined && min > max) {
-      throw new Error(`minValues can't be more than maxValues (you set minValues to ${min} and maxValues to ${max})`);
+      throw componentError(`minValues can't be more than maxValues (you set minValues to ${min} and maxValues to ${max})`, {
+        code: 'CHECKBOX_GROUP_MIN_EXCEEDS_MAX',
+        fix: 'Ensure minValues is less than or equal to maxValues',
+      });
     }
     if (min === 0 && required !== false) {
-      throw new Error('minValues can only be 0 if required is false');
+      throw componentError('minValues can only be 0 if required is false', {
+        code: 'CHECKBOX_GROUP_MIN_ZERO_REQUIRES_OPTIONAL',
+        fix: 'Omit minValues, set it to at least 1, or set required to false',
+      });
     }
   }
 
@@ -505,7 +512,7 @@ class CheckboxGroupBuilderClass extends BaseComponent<Partial<APICheckboxGroupCo
     const cur = this.data.options.length;
     const add = options.length;
     if (cur + add > MAX_OPTIONS)
-      throw new Error(`options size can't be more than ${MAX_OPTIONS}`);
+      throw componentValidationError('CHECKBOX_GROUP_VALIDATION_FAILED', `options size can't be more than ${MAX_OPTIONS}`);
     for (let i = 0; i < add; i++) {
       this.data.options.push(options[i] as unknown as APICheckboxGroupOption);
     }
@@ -541,12 +548,12 @@ class CheckboxGroupBuilderClass extends BaseComponent<Partial<APICheckboxGroupCo
    */
   override toJSON(): APICheckboxGroupComponent {
     const data = this.data;
-    if (data.custom_id === undefined) throw new Error('customId is required');
+    if (data.custom_id === undefined) throw componentValidationError('CHECKBOX_GROUP_VALIDATION_FAILED', 'customId is required');
     this.validateCustomId(data.custom_id);
     this.validateCheckboxGroupValues(data.min_values, data.max_values);
     const len = data.options ? data.options.length : 0;
     if (len < MIN_OPTIONS || len > MAX_OPTIONS) {
-      throw new Error(`options needs between ${MIN_OPTIONS} and ${MAX_OPTIONS} elements, but got ${len}`);
+      throw componentValidationError('CHECKBOX_GROUP_VALIDATION_FAILED', `options needs between ${MIN_OPTIONS} and ${MAX_OPTIONS} elements, but got ${len}`);
     }
 
     const options = serializeEntries<APICheckboxGroupOption>(data.options);

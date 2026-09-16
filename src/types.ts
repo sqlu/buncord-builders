@@ -483,11 +483,11 @@ export interface APIFileUploadComponent {
   type: ComponentType.FileUpload;
   /** The developer-defined identifier triggered on file uploads. */
   custom_id: string;
-  /** The minimum number of files the user must upload (0 to 10). Defaults to 0. */
+  /** The minimum number of files the user must upload (0 to 10). Defaults to 1. */
   min_values?: number;
-  /** The maximum number of files the user can upload (1 to 10). Defaults to 10. */
+  /** The maximum number of files the user can upload (1 to 10). Defaults to 1. */
   max_values?: number;
-  /** Whether upload submission is required. Defaults to false. */
+  /** Whether upload submission is required. Defaults to true. */
   required?: boolean;
   /** The file extensions the user is allowed to upload (max 10). Send only, it is never received. */
   file_types?: string[];

@@ -1,3 +1,4 @@
+import { componentValidationError } from '../utils/ComponentError.ts';
 import { ComponentType } from '../enums.ts';
 import type { APIMediaGalleryComponent, APIMediaGalleryItem } from '../types.ts';
 import type { CheckArrayLength, CheckMediaUrl, CheckMaxLength } from '../utils/guards.ts';
@@ -114,9 +115,9 @@ class MediaGalleryItemBuilderClass {
    */
   setURL(url: string): this {
     if (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('attachment://'))
-      throw new Error(`url must be http/https or attachment:// (got "${url}")`);
+      throw componentValidationError('MEDIA_GALLERY_VALIDATION_FAILED', `url must be http/https or attachment:// (got "${url}")`);
     if (url.length > MAX_MEDIA_URL_LENGTH)
-      throw new Error(`url is too long, max is ${MAX_MEDIA_URL_LENGTH} characters but got ${url.length}`);
+      throw componentValidationError('MEDIA_GALLERY_VALIDATION_FAILED', `url is too long, max is ${MAX_MEDIA_URL_LENGTH} characters but got ${url.length}`);
     this.data.media = { url };
     return this;
   }
@@ -130,7 +131,7 @@ class MediaGalleryItemBuilderClass {
    */
   setDescription(desc: string): this {
     if (desc.length > MAX_DESCRIPTION_LENGTH)
-      throw new Error(`description is too long, max is ${MAX_DESCRIPTION_LENGTH} characters but got ${desc.length}`);
+      throw componentValidationError('MEDIA_GALLERY_VALIDATION_FAILED', `description is too long, max is ${MAX_DESCRIPTION_LENGTH} characters but got ${desc.length}`);
     this.data.description = desc;
     return this;
   }
@@ -162,7 +163,7 @@ class MediaGalleryItemBuilderClass {
    * @throws If no URL has been set.
    */
   toJSON(): APIMediaGalleryItem {
-    if (!this.data.media?.url) throw new Error('need a media url to serialize toJSON');
+    if (!this.data.media?.url) throw componentValidationError('MEDIA_GALLERY_VALIDATION_FAILED', 'need a media url to serialize toJSON');
     return this.data as APIMediaGalleryItem;
   }
 }
@@ -270,7 +271,7 @@ class MediaGalleryBuilderClass extends BaseComponent<Partial<APIMediaGalleryComp
     const items = opts.items;
     if (items !== undefined) {
       const len = items.length;
-      if (len > MAX_ITEMS) throw new Error(`items size can't be more than ${MAX_ITEMS}`);
+      if (len > MAX_ITEMS) throw componentValidationError('MEDIA_GALLERY_VALIDATION_FAILED', `items size can't be more than ${MAX_ITEMS}`);
     }
     const payload = {
       type: ComponentType.MediaGallery,
@@ -291,7 +292,7 @@ class MediaGalleryBuilderClass extends BaseComponent<Partial<APIMediaGalleryComp
     const cur = this.data.items.length;
     const add = items.length;
     if (cur + add > MAX_ITEMS)
-      throw new Error(`items size can't be more than ${MAX_ITEMS}`);
+      throw componentValidationError('MEDIA_GALLERY_VALIDATION_FAILED', `items size can't be more than ${MAX_ITEMS}`);
     for (let i = 0; i < add; i++) {
       this.data.items.push(items[i] as unknown as APIMediaGalleryItem);
     }
@@ -322,7 +323,7 @@ class MediaGalleryBuilderClass extends BaseComponent<Partial<APIMediaGalleryComp
   override toJSON(): APIMediaGalleryComponent {
     const data = this.data;
     const len = data.items ? data.items.length : 0;
-    if (len === 0) throw new Error('need at least one item to serialize');
+    if (len === 0) throw componentValidationError('MEDIA_GALLERY_VALIDATION_FAILED', 'need at least one item to serialize');
 
     const payload: Record<string, unknown> = {
       type: ComponentType.MediaGallery,

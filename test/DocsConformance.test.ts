@@ -80,6 +80,41 @@ describe('Discord documentation conformance', () => {
       expect(issues.some((issue: AuditIssue) => issue.code === 'MODAL_TITLE_LENGTH_INVALID')).toBe(true);
     });
 
+    it('flags each required modal field even when it is absent', () => {
+      const missingTitle = BaseComponent.auditTree(
+        { custom_id: 'form', components: [{ type: ComponentType.TextDisplay, content: 'Hi' }] },
+        { structured: true, context: 'modal' },
+      ) as AuditIssue[];
+      const missingCustomId = BaseComponent.auditTree(
+        { title: 'Form', components: [{ type: ComponentType.TextDisplay, content: 'Hi' }] },
+        { structured: true, context: 'modal' },
+      ) as AuditIssue[];
+
+      expect(missingTitle.map(issue => issue.code)).toContain('MODAL_TITLE_LENGTH_INVALID');
+      expect(missingCustomId.map(issue => issue.code)).toContain('MODAL_CUSTOM_ID_REQUIRED');
+    });
+
+    it('audits labels before traversing their child component', () => {
+      const missingFields = BaseComponent.auditTree(
+        { type: ComponentType.Label },
+        { structured: true, context: 'modal' },
+      ) as AuditIssue[];
+      const invalidChild = BaseComponent.auditTree(
+        {
+          type: ComponentType.Label,
+          label: 'Unsupported',
+          component: { type: ComponentType.Separator },
+        },
+        { structured: true, context: 'modal' },
+      ) as AuditIssue[];
+
+      expect(missingFields.map(issue => issue.code)).toEqual(expect.arrayContaining([
+        'LABEL_LABEL_REQUIRED',
+        'LABEL_COMPONENT_REQUIRED',
+      ]));
+      expect(invalidChild.map(issue => issue.code)).toContain('LABEL_INVALID_CHILD_TYPE');
+    });
+
     it('requires an explicitly optional file upload for min_values 0', () => {
       const optional = BaseComponent.auditTree(
         { type: ComponentType.FileUpload, custom_id: 'docs', min_values: 0, required: false },
@@ -114,6 +149,18 @@ describe('Discord documentation conformance', () => {
         { structured: true },
       );
       expect(checkbox.some((issue: AuditIssue) => issue.code === 'CHECKBOX_GROUP_OPTIONS_LIMIT')).toBe(true);
+
+      const conflictingBounds = BaseComponent.auditTree(
+        {
+          type: ComponentType.CheckboxGroup,
+          custom_id: 'interests',
+          options: [{ value: 'one', label: 'One' }],
+          min_values: 2,
+          max_values: 1,
+        },
+        { structured: true },
+      ) as AuditIssue[];
+      expect(conflictingBounds.map(issue => issue.code)).toContain('CHECKBOX_GROUP_MIN_EXCEEDS_MAX');
     });
 
     it('flags a file upload with more than 10 file types', () => {

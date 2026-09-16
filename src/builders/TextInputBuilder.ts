@@ -1,3 +1,4 @@
+import { componentValidationError } from '../utils/ComponentError.ts';
 import { ComponentType, TextInputStyle } from '../enums.ts';
 import type { APITextInputComponent } from '../types.ts';
 import type {
@@ -245,40 +246,40 @@ class TextInputBuilderClass extends BaseComponent<Partial<APITextInputComponent>
     const maxLen = opts.maxLength ?? opts.max_length;
 
     if (opts.label !== undefined && opts.label.length > 45) {
-      throw new Error(`label is too long, max is 45 characters but got ${opts.label.length}`);
+      throw componentValidationError('TEXT_INPUT_VALIDATION_FAILED', `label is too long, max is 45 characters but got ${opts.label.length}`);
     }
     if (cid !== undefined) {
       const len = cid.length;
       if (len < 1) {
-        throw new Error(`customId is too short, need at least 1 character(s) but got 0`);
+        throw componentValidationError('TEXT_INPUT_VALIDATION_FAILED', `customId is too short, need at least 1 character(s) but got 0`);
       }
       if (len > 100) {
-        throw new Error(`customId is too long, max is 100 characters but got ${len}`);
+        throw componentValidationError('TEXT_INPUT_VALIDATION_FAILED', `customId is too long, max is 100 characters but got ${len}`);
       }
     }
     if (minLen !== undefined && (!Number.isInteger(minLen) || minLen < 0 || minLen > 4000)) {
-      throw new Error(`minLength must be between 0 and 4000, but you set it to ${minLen}`);
+      throw componentValidationError('TEXT_INPUT_VALIDATION_FAILED', `minLength must be between 0 and 4000, but you set it to ${minLen}`);
     }
     if (maxLen !== undefined && (!Number.isInteger(maxLen) || maxLen < 1 || maxLen > 4000)) {
-      throw new Error(`maxLength must be between 1 and 4000, but you set it to ${maxLen}`);
+      throw componentValidationError('TEXT_INPUT_VALIDATION_FAILED', `maxLength must be between 1 and 4000, but you set it to ${maxLen}`);
     }
     if (minLen !== undefined && maxLen !== undefined && minLen > maxLen) {
-      throw new Error(`min length can't be more than max length (you set min to ${minLen} and max to ${maxLen})`);
+      throw componentValidationError('TEXT_INPUT_VALIDATION_FAILED', `min length can't be more than max length (you set min to ${minLen} and max to ${maxLen})`);
     }
     const value = opts.value;
     if (value !== undefined) {
       if (value.length > 4000) {
-        throw new Error(`value is too long, max is 4000 characters but got ${value.length}`);
+        throw componentValidationError('TEXT_INPUT_VALIDATION_FAILED', `value is too long, max is 4000 characters but got ${value.length}`);
       }
       if (minLen !== undefined && value.length < minLen) {
-        throw new Error(`value is too short, need at least ${minLen} characters but only got ${value.length}`);
+        throw componentValidationError('TEXT_INPUT_VALIDATION_FAILED', `value is too short, need at least ${minLen} characters but only got ${value.length}`);
       }
       if (maxLen !== undefined && value.length > maxLen) {
-        throw new Error(`value is too long, max is ${maxLen} characters but got ${value.length}`);
+        throw componentValidationError('TEXT_INPUT_VALIDATION_FAILED', `value is too long, max is ${maxLen} characters but got ${value.length}`);
       }
     }
     if (opts.placeholder !== undefined && opts.placeholder.length > 100) {
-      throw new Error(`placeholder is too long, max is 100 characters but got ${opts.placeholder.length}`);
+      throw componentValidationError('TEXT_INPUT_VALIDATION_FAILED', `placeholder is too long, max is 100 characters but got ${opts.placeholder.length}`);
     }
 
     const payload: Partial<APITextInputComponent> = {
@@ -354,7 +355,7 @@ class TextInputBuilderClass extends BaseComponent<Partial<APITextInputComponent>
     this.validateRange(min, 0, MAX_TEXT_LENGTH, 'minLength');
     const max: number | undefined = this.data.max_length;
     if (max !== undefined && min > max)
-      throw new Error(`min length can't be more than max length (you set min to ${min} and max to ${max})`);
+      throw componentValidationError('TEXT_INPUT_VALIDATION_FAILED', `min length can't be more than max length (you set min to ${min} and max to ${max})`);
     this.data.min_length = min;
     return this;
   }
@@ -370,7 +371,7 @@ class TextInputBuilderClass extends BaseComponent<Partial<APITextInputComponent>
     this.validateRange(max, 1, MAX_TEXT_LENGTH, 'maxLength');
     const min: number | undefined = this.data.min_length;
     if (min !== undefined && min > max)
-      throw new Error(`min length can't be more than max length (you set min to ${min} and max to ${max})`);
+      throw componentValidationError('TEXT_INPUT_VALIDATION_FAILED', `min length can't be more than max length (you set min to ${min} and max to ${max})`);
     this.data.max_length = max;
     return this;
   }
@@ -397,11 +398,11 @@ class TextInputBuilderClass extends BaseComponent<Partial<APITextInputComponent>
     this.validateLength(value, MAX_TEXT_LENGTH, 'value');
     const min = this.data.min_length;
     if (min !== undefined && value.length < min) {
-      throw new Error(`value is too short, need at least ${min} characters but only got ${value.length}`);
+      throw componentValidationError('TEXT_INPUT_VALIDATION_FAILED', `value is too short, need at least ${min} characters but only got ${value.length}`);
     }
     const max = this.data.max_length;
     if (max !== undefined && value.length > max) {
-      throw new Error(`value is too long, max is ${max} characters but got ${value.length}`);
+      throw componentValidationError('TEXT_INPUT_VALIDATION_FAILED', `value is too long, max is ${max} characters but got ${value.length}`);
     }
   }
 
@@ -429,11 +430,11 @@ class TextInputBuilderClass extends BaseComponent<Partial<APITextInputComponent>
   override toJSON(): APITextInputComponent {
     this.validateCustomId(this.data.custom_id ?? '');
     if (this.data.style !== TextInputStyle.Short && this.data.style !== TextInputStyle.Paragraph)
-      throw new Error('style must be Short (1) or Paragraph (2)');
+      throw componentValidationError('TEXT_INPUT_VALIDATION_FAILED', 'style must be Short (1) or Paragraph (2)');
     if (this.data.min_length !== undefined) this.validateRange(this.data.min_length, 0, MAX_TEXT_LENGTH, 'minLength');
     if (this.data.max_length !== undefined) this.validateRange(this.data.max_length, 1, MAX_TEXT_LENGTH, 'maxLength');
     if (this.data.min_length !== undefined && this.data.max_length !== undefined && this.data.min_length > this.data.max_length)
-      throw new Error('minLength cannot exceed maxLength');
+      throw componentValidationError('TEXT_INPUT_VALIDATION_FAILED', 'minLength cannot exceed maxLength');
     if (this.data.value !== undefined) this.validateValue(this.data.value);
     this.validateLength(this.data.label, MAX_LABEL_LENGTH, 'label');
     this.validateLength(this.data.placeholder, MAX_PLACEHOLDER_LENGTH, 'placeholder');

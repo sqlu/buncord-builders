@@ -7,6 +7,8 @@ import type { CheckboxBuilder } from './CheckboxBuilder.ts';
 import type { CheckboxGroupBuilder } from './CheckboxGroupBuilder.ts';
 import type { RadioGroupBuilder } from './RadioGroupBuilder.ts';
 import type { FileUploadBuilder } from './FileUploadBuilder.ts';
+import { componentError, componentValidationError } from '../utils/ComponentError.ts';
+import { LABEL_CHILD_TYPES, SELECT_MENU_TYPES } from '../utils/ComponentConstraints.ts';
 import type {
   StringSelectMenuBuilder,
   UserSelectMenuBuilder,
@@ -20,28 +22,6 @@ const MAX_LABEL_LENGTH = 45;
 
 /** Maximum length of the optional description text. */
 const MAX_DESCRIPTION_LENGTH = 100;
-
-// Accepted types inside a Label
-const SELECT_TYPES = new Set<number>([
-  ComponentType.StringSelect,
-  ComponentType.UserSelect,
-  ComponentType.RoleSelect,
-  ComponentType.MentionableSelect,
-  ComponentType.ChannelSelect,
-]);
-
-const ALLOWED_LABEL_TYPES = new Set<number>([
-  ComponentType.StringSelect,
-  ComponentType.UserSelect,
-  ComponentType.RoleSelect,
-  ComponentType.MentionableSelect,
-  ComponentType.ChannelSelect,
-  ComponentType.TextInput,
-  ComponentType.Checkbox,
-  ComponentType.CheckboxGroup,
-  ComponentType.RadioGroup,
-  ComponentType.FileUpload,
-]);
 
 /**
  * Union type of all component types that can be wrapped by a {@link LabelBuilder}.
@@ -166,15 +146,19 @@ class LabelBuilderClass extends BaseComponent<Partial<APILabelComponent>> {
     if (!opts) return;
 
     if (opts.label !== undefined) {
-      if (opts.label.length < 1) throw new Error('label is required');
+      if (opts.label.length < 1)
+        throw componentError('label is required', { code: 'LABEL_LABEL_REQUIRED', fix: 'Call .setLabel() with 1 to 45 characters' });
       this.validateLength(opts.label, MAX_LABEL_LENGTH, 'label');
       this.data.label = opts.label;
     }
 
     if (opts.component !== undefined) {
       const compType = opts.component.type;
-      if (compType === undefined || !ALLOWED_LABEL_TYPES.has(compType))
-        throw new Error(`component type ${compType} is not allowed inside a Label`);
+      if (compType === undefined || !LABEL_CHILD_TYPES.has(compType))
+        throw componentError(`component type ${compType} is not allowed inside a Label`, {
+        code: 'LABEL_INVALID_CHILD_TYPE',
+        fix: 'Wrap a text input, select menu, checkbox, radio group or file upload instead',
+      });
       (this.data as Record<string, unknown>).component = opts.component;
     }
 
@@ -226,29 +210,41 @@ class LabelBuilderClass extends BaseComponent<Partial<APILabelComponent>> {
    */
   setComponent(comp: LabelComponentBuilder): this {
     const compType = comp?.type;
-    if (compType === undefined || !ALLOWED_LABEL_TYPES.has(compType))
-      throw new Error(`component type ${compType} is not allowed inside a Label`);
+    if (compType === undefined || !LABEL_CHILD_TYPES.has(compType))
+      throw componentError(`component type ${compType} is not allowed inside a Label`, {
+        code: 'LABEL_INVALID_CHILD_TYPE',
+        fix: 'Wrap a text input, select menu, checkbox, radio group or file upload instead',
+      });
     (this.data as Record<string, unknown>).component = comp;
     return this;
   }
 
   private validateModalComponent(payload: Record<string, unknown>): void {
-    if (SELECT_TYPES.has(payload.type as number)) {
+    if (SELECT_MENU_TYPES.has(payload.type as number)) {
       if (payload.disabled !== undefined)
-        throw new Error('disabled cannot be set on select menus inside modals');
+        throw componentValidationError('LABEL_VALIDATION_FAILED', 'disabled cannot be set on select menus inside modals');
       if (payload.min_values === 0 && payload.required !== false)
-        throw new Error('select minValues can only be 0 if required is false');
+        throw componentError('select minValues can only be 0 if required is false', {
+          code: 'CHECKBOX_GROUP_MIN_ZERO_REQUIRES_OPTIONAL',
+          fix: 'Omit minValues, set it to at least 1, or set required to false',
+        });
     }
     if (payload.type === ComponentType.FileUpload) {
       if (payload.min_values === 0 && payload.required !== false)
-        throw new Error('file upload minValues can only be 0 if required is false');
+        throw componentError('file upload minValues can only be 0 if required is false', {
+          code: 'FILE_UPLOAD_MIN_ZERO_REQUIRES_OPTIONAL',
+          fix: 'Omit minValues, set it to at least 1, or set required to false',
+        });
     }
     if (payload.type === ComponentType.CheckboxGroup) {
       const options = Array.isArray(payload.options) ? payload.options : [];
       if (options.length < 1 || options.length > 10)
-        throw new Error(`checkbox group options must have between 1 and 10 entries (got ${options.length})`);
+        throw componentValidationError('LABEL_VALIDATION_FAILED', `checkbox group options must have between 1 and 10 entries (got ${options.length})`);
       if (payload.min_values === 0 && payload.required !== false)
-        throw new Error('checkbox group minValues can only be 0 if required is false');
+        throw componentError('checkbox group minValues can only be 0 if required is false', {
+          code: 'SELECT_MENU_MIN_ZERO_REQUIRES_OPTIONAL',
+          fix: 'Omit minValues, set it to at least 1, or set required to false',
+        });
     }
   }
 
@@ -321,10 +317,20 @@ class LabelBuilderClass extends BaseComponent<Partial<APILabelComponent>> {
    */
   override toJSON(): APILabelComponent {
     const label = this.data.label;
-    if (label === undefined) throw new Error('label is required to serialize a Label component');
+    if (label === undefined) {
+      throw componentError('label is required to serialize a Label component', {
+        code: 'LABEL_LABEL_REQUIRED',
+        fix: 'Call .setLabel() with 1 to 45 characters',
+      });
+    }
 
     const comp = (this.data as Record<string, unknown>).component as LabelComponentBuilder | undefined;
-    if (comp === undefined) throw new Error('component is required to serialize a Label component');
+    if (comp === undefined) {
+      throw componentError('component is required to serialize a Label component', {
+        code: 'LABEL_COMPONENT_REQUIRED',
+        fix: 'Call .setComponent() with the input this label describes',
+      });
+    }
 
     const component = comp.toJSON ? comp.toJSON() : comp;
     if (component && typeof component === 'object')

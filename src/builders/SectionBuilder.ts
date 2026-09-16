@@ -2,6 +2,7 @@ import { ComponentType } from '../enums.ts';
 import type { APISectionComponent, APITextDisplayComponent, APIButtonComponent, APIThumbnailComponent } from '../types.ts';
 import type { CheckArrayLength } from '../utils/guards.ts';
 import { BaseComponent, resolveRaw } from './base.ts';
+import { componentError, componentValidationError } from '../utils/ComponentError.ts';
 
 /** Bounds of a section's text display list. */
 const MIN_COMPONENTS = 1;
@@ -17,15 +18,27 @@ function assertSectionChildren(components: readonly { type?: number }[]): void {
   for (let i = 0; i < components.length; i++) {
     const type = components[i]?.type;
     if (type !== ComponentType.TextDisplay) {
-      throw new Error(`Section can only contain TextDisplay components, but got type ${type}`);
+      throw componentError(`Section can only contain TextDisplay components, but got type ${type}`, {
+        code: 'SECTION_INVALID_CHILD_TYPE',
+        fix: 'Only add TextDisplay components inside Section',
+      });
     }
   }
 }
 
 function assertSectionAccessory(accessory: { type?: number } | undefined): void {
-  const type = accessory?.type;
+  if (accessory === undefined || accessory === null) {
+    throw componentError('Section accessory must be of type Button or Thumbnail, but got type undefined', {
+      code: 'SECTION_MISSING_ACCESSORY',
+      fix: 'Call .setAccessory() with a Button or Thumbnail component',
+    });
+  }
+  const type = accessory.type;
   if (type !== ComponentType.Button && type !== ComponentType.Thumbnail) {
-    throw new Error(`Section accessory must be of type Button or Thumbnail, but got type ${type}`);
+    throw componentError(`Section accessory must be of type Button or Thumbnail, but got type ${type}`, {
+      code: 'SECTION_ACCESSORY_INVALID_TYPE',
+      fix: 'Use a Button or Thumbnail component as the Section accessory',
+    });
   }
 }
 import type { TextDisplayBuilder } from './TextDisplayBuilder.ts';
@@ -129,7 +142,7 @@ class SectionBuilderClass extends BaseComponent<Partial<APISectionComponent>> {
     if (!opts) return;
     if (opts.components !== undefined) {
       const len = opts.components.length;
-      if (len > MAX_COMPONENTS) throw new Error(`can't have more than ${MAX_COMPONENTS} components here`);
+      if (len > MAX_COMPONENTS) throw componentValidationError('SECTION_VALIDATION_FAILED', `can't have more than ${MAX_COMPONENTS} components here`);
       assertSectionChildren(opts.components);
       this.data.components = opts.components as unknown as APITextDisplayComponent[];
     }
@@ -150,7 +163,7 @@ class SectionBuilderClass extends BaseComponent<Partial<APISectionComponent>> {
       this.data.components = current;
     }
     if (current.length + components.length > MAX_COMPONENTS)
-      throw new Error(`can't have more than ${MAX_COMPONENTS} components here`);
+      throw componentValidationError('SECTION_VALIDATION_FAILED', `can't have more than ${MAX_COMPONENTS} components here`);
     assertSectionChildren(components);
     for (let i = 0; i < components.length; i++) {
       current.push(components[i] as unknown as APITextDisplayComponent);
@@ -167,7 +180,7 @@ class SectionBuilderClass extends BaseComponent<Partial<APISectionComponent>> {
    * @returns This builder for chaining.
    */
   spliceTextDisplayComponents(index: number, deleteCount: number, ...components: TextDisplayBuilder[]): this {
-    if (components.length > MAX_COMPONENTS) throw new Error(`can't have more than ${MAX_COMPONENTS} components here`);
+    if (components.length > MAX_COMPONENTS) throw componentValidationError('SECTION_VALIDATION_FAILED', `can't have more than ${MAX_COMPONENTS} components here`);
     assertSectionChildren(components);
     const current = this.data.components ?? [];
     const next = current.slice();
@@ -227,7 +240,7 @@ class SectionBuilderClass extends BaseComponent<Partial<APISectionComponent>> {
     const comps = this.data.components;
     const len = comps ? comps.length : 0;
     if (len === 0)
-      throw new Error('need at least one TextDisplay component to serialize');
+      throw componentValidationError('SECTION_VALIDATION_FAILED', 'need at least one TextDisplay component to serialize');
 
     this.validateArrayLength(comps!, MIN_COMPONENTS, MAX_COMPONENTS, 'components');
     assertSectionChildren(comps!);

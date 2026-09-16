@@ -21,6 +21,7 @@ import type {
   ValidateSelectMenuRequired,
 } from '../utils/guards.ts';
 import { BaseComponent, resolveRaw, serializeEntries } from './base.ts';
+import { componentError, componentValidationError } from '../utils/ComponentError.ts';
 import { validateOptionFields } from '../utils/OptionValidation.ts';
 
 /** Maximum length of a select menu placeholder. */
@@ -78,7 +79,7 @@ function initSelectMenuPayload(payload: Record<string, unknown>, opts: CommonSel
   const customId = opts.customId ?? opts.custom_id;
   if (customId !== undefined) {
     if (customId.length < 1 || customId.length > 100) {
-      throw new Error('customId is invalid, must be between 1 and 100 characters');
+      throw componentValidationError('SELECT_MENU_VALIDATION_FAILED', 'customId is invalid, must be between 1 and 100 characters');
     }
     payload.custom_id = customId;
   }
@@ -89,22 +90,28 @@ function initSelectMenuPayload(payload: Record<string, unknown>, opts: CommonSel
 
   if (minValues !== undefined) {
     if (!Number.isInteger(minValues) || minValues < 0 || minValues > MAX_SELECTED_VALUES) {
-      throw new Error(`minValues must be between 0 and ${MAX_SELECTED_VALUES}, but you set it to ${minValues}`);
+      throw componentValidationError('SELECT_MENU_VALIDATION_FAILED', `minValues must be between 0 and ${MAX_SELECTED_VALUES}, but you set it to ${minValues}`);
     }
     // Discord defaults `required` to true on select menus, so min_values of 0
     // only makes sense once the menu is explicitly marked optional.
     if (minValues === 0 && required !== false) {
-      throw new Error('minValues can only be 0 if required is false');
+      throw componentError('minValues can only be 0 if required is false', {
+        code: 'SELECT_MENU_MIN_ZERO_REQUIRES_OPTIONAL',
+        fix: 'Omit minValues, set it to at least 1, or set required to false',
+      });
     }
     payload.min_values = minValues;
   }
 
   if (maxValues !== undefined) {
     if (!Number.isInteger(maxValues) || maxValues < 1 || maxValues > MAX_SELECTED_VALUES) {
-      throw new Error(`maxValues must be between 1 and ${MAX_SELECTED_VALUES}, but you set it to ${maxValues}`);
+      throw componentValidationError('SELECT_MENU_VALIDATION_FAILED', `maxValues must be between 1 and ${MAX_SELECTED_VALUES}, but you set it to ${maxValues}`);
     }
     if (minValues !== undefined && minValues > maxValues) {
-      throw new Error(`minValues can't be more than maxValues (you set minValues to ${minValues} and maxValues to ${maxValues})`);
+      throw componentError(`minValues can't be more than maxValues (you set minValues to ${minValues} and maxValues to ${maxValues})`, {
+        code: 'SELECT_MENU_MIN_EXCEEDS_MAX',
+        fix: 'Ensure minValues is less than or equal to maxValues',
+      });
     }
     payload.max_values = maxValues;
   }
@@ -112,7 +119,7 @@ function initSelectMenuPayload(payload: Record<string, unknown>, opts: CommonSel
   const placeholder = opts.placeholder;
   if (placeholder !== undefined) {
     if (placeholder.length > MAX_PLACEHOLDER_LENGTH) {
-      throw new Error(`placeholder is too long, max is ${MAX_PLACEHOLDER_LENGTH} characters but got ${placeholder.length}`);
+      throw componentValidationError('SELECT_MENU_VALIDATION_FAILED', `placeholder is too long, max is ${MAX_PLACEHOLDER_LENGTH} characters but got ${placeholder.length}`);
     }
     payload.placeholder = placeholder;
   }
@@ -220,10 +227,16 @@ abstract class BaseSelectMenuBuilderClass<
     if (min !== undefined) this.validateRange(min, 0, MAX_SELECTED_VALUES, 'minValues');
     if (max !== undefined) this.validateRange(max, 1, MAX_SELECTED_VALUES, 'maxValues');
     if (min !== undefined && max !== undefined && min > max) {
-      throw new Error(`minValues can't be more than maxValues (you set minValues to ${min} and maxValues to ${max})`);
+      throw componentError(`minValues can't be more than maxValues (you set minValues to ${min} and maxValues to ${max})`, {
+        code: 'SELECT_MENU_MIN_EXCEEDS_MAX',
+        fix: 'Ensure minValues is less than or equal to maxValues',
+      });
     }
     if (min === 0 && required !== false) {
-      throw new Error('minValues can only be 0 if required is false');
+      throw componentError('minValues can only be 0 if required is false', {
+        code: 'SELECT_MENU_MIN_ZERO_REQUIRES_OPTIONAL',
+        fix: 'Omit minValues, set it to at least 1, or set required to false',
+      });
     }
   }
 
@@ -251,17 +264,20 @@ abstract class BaseSelectMenuBuilderClass<
   ): void {
     if (!vals || vals.length === 0) return;
     const count = vals.length;
-    if (count > MAX_SELECTED_VALUES) throw new Error(`can't have more than ${MAX_SELECTED_VALUES} default values`);
+    if (count > MAX_SELECTED_VALUES) throw componentValidationError('SELECT_MENU_VALIDATION_FAILED', `can't have more than ${MAX_SELECTED_VALUES} default values`);
     if (min !== undefined && count < min) {
-      throw new Error(`default_values count (${count}) is less than minValues (${min})`);
+      throw componentValidationError('SELECT_MENU_VALIDATION_FAILED', `default_values count (${count}) is less than minValues (${min})`);
     }
     if (max !== undefined && count > max) {
-      throw new Error(`default_values count (${count}) exceeds maxValues (${max})`);
+      throw componentValidationError('SELECT_MENU_VALIDATION_FAILED', `default_values count (${count}) exceeds maxValues (${max})`);
     }
     for (let i = 0; i < count; i++) {
       const type = vals[i]!.type;
       if (!allowed.includes(type))
-        throw new Error(`default type "${type}" is invalid, must be one of: ${allowed.join(', ')}`);
+        throw componentError(`default type "${type}" is invalid, must be one of: ${allowed.join(', ')}`, {
+          code: 'SELECT_DEFAULT_VALUE_TYPE_INVALID',
+          fix: `Change type to one of the allowed types: ${allowed.join(', ')}`,
+        });
     }
   }
 
@@ -451,18 +467,18 @@ constructor(opts?: TypeSafeSelectMenuOption<string, string, string>) {
     
     const lbl = opts.label as string | undefined;
     if (lbl !== undefined) {
-      if (lbl.length > 100) throw new Error(`label is too long, max is 100 characters but got ${lbl.length}`);
+      if (lbl.length > 100) throw componentValidationError('SELECT_MENU_VALIDATION_FAILED', `label is too long, max is 100 characters but got ${lbl.length}`);
       this.data.label = lbl;
     }
     const val = opts.value as string | undefined;
     if (val !== undefined) {
-      if (val.length < 1) throw new Error('value needs to be at least 1 character');
-      if (val.length > 100) throw new Error(`value is too long, max is 100 characters but got ${val.length}`);
+      if (val.length < 1) throw componentValidationError('SELECT_MENU_VALIDATION_FAILED', 'value needs to be at least 1 character');
+      if (val.length > 100) throw componentValidationError('SELECT_MENU_VALIDATION_FAILED', `value is too long, max is 100 characters but got ${val.length}`);
       this.data.value = val;
     }
     if (opts.description !== undefined) {
       const d = opts.description as string;
-      if (d.length > 100) throw new Error(`description is too long, max is 100 characters but got ${d.length}`);
+      if (d.length > 100) throw componentValidationError('SELECT_MENU_VALIDATION_FAILED', `description is too long, max is 100 characters but got ${d.length}`);
       this.data.description = d;
     }
     if (opts.emoji !== undefined) this.data.emoji = opts.emoji;
@@ -477,7 +493,7 @@ constructor(opts?: TypeSafeSelectMenuOption<string, string, string>) {
    */
   setLabel(lbl: CheckMaxLength<string, 100, 'label'>): this {
     if (lbl.length > 100) {
-      throw new Error(`label is too long, max is 100 characters but got ${lbl.length}`);
+      throw componentValidationError('SELECT_MENU_VALIDATION_FAILED', `label is too long, max is 100 characters but got ${lbl.length}`);
     }
     this.data.label = lbl;
     return this;
@@ -491,10 +507,10 @@ constructor(opts?: TypeSafeSelectMenuOption<string, string, string>) {
    */
   setValue(val: CheckMinLength<string, 1, 'value'> & CheckMaxLength<string, 100, 'value'>): this {
     if (val.length < 1) {
-      throw new Error('value needs to be at least 1 character');
+      throw componentValidationError('SELECT_MENU_VALIDATION_FAILED', 'value needs to be at least 1 character');
     }
     if (val.length > 100) {
-      throw new Error(`value is too long, max is 100 characters but got ${val.length}`);
+      throw componentValidationError('SELECT_MENU_VALIDATION_FAILED', `value is too long, max is 100 characters but got ${val.length}`);
     }
     this.data.value = val;
     return this;
@@ -508,7 +524,7 @@ constructor(opts?: TypeSafeSelectMenuOption<string, string, string>) {
    */
   setDescription(desc: CheckMaxLength<string, 100, 'description'>): this {
     if (desc.length > 100) {
-      throw new Error(`description is too long, max is 100 characters but got ${desc.length}`);
+      throw componentValidationError('SELECT_MENU_VALIDATION_FAILED', `description is too long, max is 100 characters but got ${desc.length}`);
     }
     this.data.description = desc;
     return this;
@@ -540,8 +556,8 @@ constructor(opts?: TypeSafeSelectMenuOption<string, string, string>) {
    * @throws If label or value is missing
    */
   toJSON(): APISelectMenuOption {
-    if (!this.data.label) throw new Error('label is required');
-    if (!this.data.value) throw new Error('value is required');
+    if (!this.data.label) throw componentValidationError('SELECT_MENU_VALIDATION_FAILED', 'label is required');
+    if (!this.data.value) throw componentValidationError('SELECT_MENU_VALIDATION_FAILED', 'value is required');
     return this.data as APISelectMenuOption;
   }
 }
@@ -770,7 +786,7 @@ class StringSelectMenuBuilderClass extends BaseSelectMenuBuilderClass<Partial<AP
     if (options !== undefined) {
       const optLen = options.length;
       if (optLen < MIN_OPTIONS || optLen > MAX_OPTIONS) {
-        throw new Error(`options needs between ${MIN_OPTIONS} and ${MAX_OPTIONS} elements, but got ${optLen}`);
+        throw componentValidationError('SELECT_MENU_VALIDATION_FAILED', `options needs between ${MIN_OPTIONS} and ${MAX_OPTIONS} elements, but got ${optLen}`);
       }
     }
 
@@ -810,7 +826,7 @@ class StringSelectMenuBuilderClass extends BaseSelectMenuBuilderClass<Partial<AP
     const cur = this.data.options.length;
     const add = options.length;
     if (cur + add > 25)
-      throw new Error("options size can't be more than 25");
+      throw componentValidationError('SELECT_MENU_VALIDATION_FAILED', "options size can't be more than 25");
     for (let i = 0; i < add; i++) {
       this.data.options.push(options[i] as unknown as APISelectMenuOption);
     }
@@ -844,8 +860,9 @@ class StringSelectMenuBuilderClass extends BaseSelectMenuBuilderClass<Partial<AP
     this.validateSerialization();
     const data = this.data;
     const options = data.options;
-    const serialized = serializeEntries<APISelectMenuOption>(options, validateOptionFields);
+    const serialized = serializeEntries<APISelectMenuOption>(options);
     this.validateArrayLength(serialized, MIN_OPTIONS, MAX_OPTIONS, 'options');
+    for (let i = 0; i < serialized.length; i++) validateOptionFields(serialized[i]!);
 
     // Plain option objects are already wire-ready, so nothing has to be copied.
     if (serialized === (options as unknown)) return data as APIStringSelectComponent;
@@ -923,7 +940,7 @@ abstract class BaseAutoSelectMenuBuilderClass<
     },
   ): void {
     const cid = opts.customId ?? opts.custom_id;
-    if (!cid) throw new Error('customId is required');
+    if (!cid) throw componentValidationError('SELECT_MENU_VALIDATION_FAILED', 'customId is required');
     const min = opts.minValues ?? opts.min_values;
     const max = opts.maxValues ?? opts.max_values;
     this.initCommon(cid, opts.placeholder as string | undefined, min, max, opts.disabled, opts.required);

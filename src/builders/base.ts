@@ -1,6 +1,7 @@
 import { ComponentType } from '../enums.ts';
 import type { APIComponent } from '../types.ts';
 import { MAX_COMPONENT_ID } from '../utils/ComponentConstraints.ts';
+import { componentError } from '../utils/ComponentError.ts';
 import { validateComponentTree } from '../utils/ComponentTree.ts';
 import { auditComponentTree } from '../utils/ComponentAudit.ts';
 import type { AuditContext, AuditIssue } from '../utils/ComponentAudit.ts';
@@ -29,13 +30,9 @@ type SerializableEntry = { toJSON?(): unknown };
  * allocates nothing.
  *
  * @param entries - Plain payloads, builders, or a mix of both.
- * @param validate - Optional check on each serialized entry, with the list length.
  * @returns The serialized entries.
  */
-export function serializeEntries<T>(
-  entries: readonly unknown[] | undefined,
-  validate?: (entry: T, length: number) => void,
-): T[] {
+export function serializeEntries<T>(entries: readonly unknown[] | undefined): T[] {
   if (!entries) return [];
 
   const len = entries.length;
@@ -43,7 +40,6 @@ export function serializeEntries<T>(
   for (let i = 0; i < len; i++) {
     const entry = entries[i] as SerializableEntry;
     if (!entry || typeof entry.toJSON !== 'function') {
-      if (validate) validate(entry as T, len);
       if (serialized) serialized[i] = entry as unknown as T;
       continue;
     }
@@ -51,9 +47,7 @@ export function serializeEntries<T>(
       serialized = new Array<T>(len);
       for (let j = 0; j < i; j++) serialized[j] = entries[j] as T;
     }
-    const payload = entry.toJSON() as T;
-    if (validate) validate(payload, len);
-    serialized[i] = payload;
+    serialized[i] = entry.toJSON() as T;
   }
 
   return serialized ?? (entries as unknown as T[]);
@@ -107,7 +101,10 @@ export abstract class BaseComponent<
       return;
     }
     if (!Number.isInteger(value) || value < 0 || value > MAX_COMPONENT_ID) {
-      throw new Error(`id needs to be a 32-bit unsigned integer, but got ${value}`);
+      throw componentError(`id needs to be a 32-bit unsigned integer, but got ${value}`, {
+        code: 'INVALID_COMPONENT_ID',
+        fix: `Use .setId() with an integer between 0 and ${MAX_COMPONENT_ID}, or omit the id`,
+      });
     }
     (this.data as Record<string, unknown>).id = value;
   }
@@ -166,7 +163,11 @@ export abstract class BaseComponent<
    */
   protected validateLength(str: string | undefined, max: number, name: string): void {
     if (str !== undefined && str.length > max) {
-      throw new Error(`${name} is too long, max is ${max} characters but got ${str.length}`);
+      throw componentError(`${name} is too long, max is ${max} characters but got ${str.length}`, {
+        code: 'STRING_TOO_LONG',
+        path: name,
+        fix: `Shorten ${name} to ${max} characters or fewer`,
+      });
     }
   }
 
@@ -180,7 +181,11 @@ export abstract class BaseComponent<
    */
   protected validateMinLength(str: string, min: number, name: string): void {
     if (str.length < min) {
-      throw new Error(`${name} is too short, need at least ${min} character(s) but got ${str.length}`);
+      throw componentError(`${name} is too short, need at least ${min} character(s) but got ${str.length}`, {
+        code: 'STRING_TOO_SHORT',
+        path: name,
+        fix: `Give ${name} at least ${min} character(s)`,
+      });
     }
   }
 
@@ -195,7 +200,11 @@ export abstract class BaseComponent<
    */
   protected validateRange(val: number, min: number, max: number, name: string): void {
     if (!Number.isInteger(val) || val < min || val > max) {
-      throw new Error(`${name} must be between ${min} and ${max}, but you set it to ${val}`);
+      throw componentError(`${name} must be between ${min} and ${max}, but you set it to ${val}`, {
+        code: 'VALUE_OUT_OF_RANGE',
+        path: name,
+        fix: `Set ${name} to an integer between ${min} and ${max}`,
+      });
     }
   }
 
@@ -210,7 +219,11 @@ export abstract class BaseComponent<
    */
   protected validateArrayLength(arr: readonly unknown[], min: number, max: number, name: string): void {
     if (arr.length < min || arr.length > max) {
-      throw new Error(`${name} needs between ${min} and ${max} elements, but got ${arr.length}`);
+      throw componentError(`${name} needs between ${min} and ${max} elements, but got ${arr.length}`, {
+        code: 'ARRAY_LENGTH_INVALID',
+        path: name,
+        fix: `Keep ${name} between ${min} and ${max} elements`,
+      });
     }
   }
 
@@ -223,7 +236,11 @@ export abstract class BaseComponent<
    */
   protected validateHttpUrl(url: string, name: string): void {
     if (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('discord://')) {
-      throw new Error(`${name} must be a valid http, https, or discord URL, got "${url}"`);
+      throw componentError(`${name} must be a valid http, https, or discord URL, got "${url}"`, {
+        code: 'INVALID_URL_SCHEME',
+        path: name,
+        fix: `Use an http://, https:// or discord:// URL for ${name}`,
+      });
     }
   }
 
@@ -237,10 +254,18 @@ export abstract class BaseComponent<
   protected validateCustomId(customId: string, name = 'customId'): void {
     const len = customId.length;
     if (len < 1) {
-      throw new Error(`${name} is too short, need at least 1 character(s) but got 0`);
+      throw componentError(`${name} is too short, need at least 1 character(s) but got 0`, {
+        code: 'CUSTOM_ID_LENGTH_INVALID',
+        path: name,
+        fix: `Use a non-empty ${name} no longer than 100 characters`,
+      });
     }
     if (len > 100) {
-      throw new Error(`${name} is too long, max is 100 characters but got ${len}`);
+      throw componentError(`${name} is too long, max is 100 characters but got ${len}`, {
+        code: 'CUSTOM_ID_LENGTH_INVALID',
+        path: name,
+        fix: `Use a non-empty ${name} no longer than 100 characters`,
+      });
     }
   }
 
@@ -303,6 +328,9 @@ export abstract class BaseComponent<
     if (typeof ctor.from === 'function') {
       return ctor.from(structuredClone(this.toJSON())) as this;
     }
-    throw new Error(`can't clone component of type ${this.type} because it doesn't have a static from method`);
+    throw componentError(`can't clone component of type ${this.type} because it doesn't have a static from method`, {
+      code: 'CLONE_UNSUPPORTED',
+      fix: 'Rebuild the component manually instead of cloning it',
+    });
   }
 }

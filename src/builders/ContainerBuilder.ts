@@ -2,6 +2,7 @@ import { ComponentType } from '../enums.ts';
 import type { RGBTuple, APIContainerComponent, APIContainerComponentChild } from '../types.ts';
 import type { CheckArrayLength } from '../utils/guards.ts';
 import { BaseComponent, CONTAINER_CHILD_TYPES, resolveRaw } from './base.ts';
+import { componentError, componentValidationError } from '../utils/ComponentError.ts';
 
 /** Bounds of a container's child list. */
 const MIN_COMPONENTS = 1;
@@ -17,8 +18,12 @@ function assertContainerChildren(components: readonly ContainerComponent[]): voi
   for (let i = 0; i < components.length; i++) {
     const type = components[i]?.type;
     if (type === undefined || !CONTAINER_CHILD_TYPES.has(type)) {
-      throw new Error(
+      throw componentError(
         `component type ${type} is not allowed inside a Container (only ActionRow, TextDisplay, Section, MediaGallery, Separator, and File are)`,
+        {
+          code: 'CONTAINER_CHILD_INVALID_TYPE',
+          fix: 'Remove or move the invalid component out of the Container',
+        },
       );
     }
   }
@@ -152,7 +157,7 @@ class ContainerBuilderClass extends BaseComponent<Partial<APIContainerComponent>
     if (opts.spoiler !== undefined) this.setSpoiler(opts.spoiler);
     if (opts.components !== undefined) {
       const len = opts.components.length;
-      if (len > MAX_COMPONENTS) throw new Error(`components size can't exceed ${MAX_COMPONENTS}`);
+      if (len > MAX_COMPONENTS) throw componentValidationError('CONTAINER_VALIDATION_FAILED', `components size can't exceed ${MAX_COMPONENTS}`);
       assertContainerChildren(opts.components);
       this.data.components = opts.components as unknown as APIContainerComponentChild[];
     }
@@ -169,12 +174,12 @@ class ContainerBuilderClass extends BaseComponent<Partial<APIContainerComponent>
       const [r, g, b] = color as RGBTuple;
       if (!Number.isInteger(r) || !Number.isInteger(g) || !Number.isInteger(b) ||
           r < 0 || r > 255 || g < 0 || g > 255 || b < 0 || b > 255) {
-        throw new Error(`RGB values must be between 0 and 255, but got [${r}, ${g}, ${b}]`);
+        throw componentValidationError('CONTAINER_VALIDATION_FAILED', `RGB values must be between 0 and 255, but got [${r}, ${g}, ${b}]`);
       }
       this.data.accent_color = (r << 16) + (g << 8) + b;
     } else {
       if (!Number.isInteger(color) || color < 0 || color > 0xffffff) {
-        throw new Error(`accent color must be between 0x000000 and 0xFFFFFF, but got ${color}`);
+        throw componentValidationError('CONTAINER_VALIDATION_FAILED', `accent color must be between 0x000000 and 0xFFFFFF, but got ${color}`);
       }
       this.data.accent_color = color;
     }
@@ -213,7 +218,7 @@ class ContainerBuilderClass extends BaseComponent<Partial<APIContainerComponent>
       this.data.components = current;
     }
     if (current.length + components.length > MAX_COMPONENTS)
-      throw new Error(`components size can't exceed ${MAX_COMPONENTS}`);
+      throw componentValidationError('CONTAINER_VALIDATION_FAILED', `components size can't exceed ${MAX_COMPONENTS}`);
     assertContainerChildren(components);
     for (let i = 0; i < components.length; i++) {
       current.push(components[i] as unknown as APIContainerComponentChild);
@@ -308,7 +313,7 @@ class ContainerBuilderClass extends BaseComponent<Partial<APIContainerComponent>
     const comps = this.data.components;
     const len = comps ? comps.length : 0;
     if (len === 0) {
-      throw new Error('need at least one component to serialize');
+      throw componentValidationError('CONTAINER_VALIDATION_FAILED', 'need at least one component to serialize');
     }
     const serialized = new Array(len);
     for (let i = 0; i < len; i++) {

@@ -1,3 +1,4 @@
+import { componentValidationError } from '../utils/ComponentError.ts';
 import { ComponentType } from '../enums.ts';
 import type { APITextDisplayComponent } from '../types.ts';
 import type { CheckMaxLength, CheckMinLength } from '../utils/guards.ts';
@@ -75,7 +76,7 @@ class TextDisplayBuilderClass extends BaseComponent<Partial<APITextDisplayCompon
    */
   setContent(content: CheckMinLength<string, 1, 'content'> & CheckMaxLength<string, 4000, 'content'>): this {
     if (content.length < 1 || content.length > 4000)
-      throw new Error(`content must be between 1 and 4000 characters, but you gave me ${content.length}`);
+      throw componentValidationError('TEXT_DISPLAY_VALIDATION_FAILED', `content must be between 1 and 4000 characters, but you gave me ${content.length}`);
     this.data.content = content;
     return this;
   }

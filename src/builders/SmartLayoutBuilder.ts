@@ -1,3 +1,4 @@
+import { componentValidationError } from '../utils/ComponentError.ts';
 import { ComponentType } from '../enums.ts';
 import { ActionRowBuilder, type ActionRowComponent } from './ActionRowBuilder.ts';
 import type { ButtonBuilder } from './ButtonBuilder.ts';
@@ -70,7 +71,7 @@ export class SmartLayoutBuilder {
   /** Creates an empty layout queue. */
   constructor(options: SmartLayoutOptions = {}) {
     const mode = options.mode ?? 'legacy';
-    if (mode !== 'legacy' && mode !== 'componentsV2') throw new Error(`invalid layout mode ${mode}`);
+    if (mode !== 'legacy' && mode !== 'componentsV2') throw componentValidationError('SMART_LAYOUT_VALIDATION_FAILED', `invalid layout mode ${mode}`);
     this.mode = mode;
   }
 
@@ -78,10 +79,10 @@ export class SmartLayoutBuilder {
   private validateComponents(additions: readonly LayoutComponent[] = []): void {
     const count = this.components.length + additions.length;
     if (this.mode === 'legacy' && count > MAX_ROWS * MAX_BUTTONS_PER_ROW) {
-      throw new Error(`too many action rows, discord allows a maximum of ${MAX_ROWS}`);
+      throw componentValidationError('SMART_LAYOUT_VALIDATION_FAILED', `too many action rows, discord allows a maximum of ${MAX_ROWS}`);
     }
     if (this.mode === 'componentsV2' && count >= MAX_V2_COMPONENTS) {
-      throw new Error(`too many components, discord limit is ${MAX_V2_COMPONENTS} including action rows`);
+      throw componentValidationError('SMART_LAYOUT_VALIDATION_FAILED', `too many components, discord limit is ${MAX_V2_COMPONENTS} including action rows`);
     }
     let rows = 0;
     let pendingButtons = 0;
@@ -98,13 +99,13 @@ export class SmartLayoutBuilder {
         rows++;
         pendingButtons = 0;
       } else {
-        throw new Error(`invalid layout component type ${type}`);
+        throw componentValidationError('SMART_LAYOUT_VALIDATION_FAILED', `invalid layout component type ${type}`);
       }
       if (this.mode === 'legacy' && rows > MAX_ROWS) {
-        throw new Error(`too many action rows, got ${rows} but discord allows a maximum of ${MAX_ROWS}`);
+        throw componentValidationError('SMART_LAYOUT_VALIDATION_FAILED', `too many action rows, got ${rows} but discord allows a maximum of ${MAX_ROWS}`);
       }
       if (this.mode === 'componentsV2' && count + rows > MAX_V2_COMPONENTS) {
-        throw new Error(`too many components, discord limit is ${MAX_V2_COMPONENTS} including action rows`);
+        throw componentValidationError('SMART_LAYOUT_VALIDATION_FAILED', `too many components, discord limit is ${MAX_V2_COMPONENTS} including action rows`);
       }
     }
   }
@@ -117,7 +118,7 @@ export class SmartLayoutBuilder {
   addButtons(...buttons: ButtonBuilder[]): this {
     this.validateComponents(buttons);
     for (let i = 0; i < buttons.length; i++) {
-      if (buttons[i]?.type !== ComponentType.Button) throw new Error('addButtons requires Button components');
+      if (buttons[i]?.type !== ComponentType.Button) throw componentValidationError('SMART_LAYOUT_VALIDATION_FAILED', 'addButtons requires Button components');
     }
     for (let i = 0; i < buttons.length; i++) this.components.push(buttons[i]!);
     return this;
@@ -129,7 +130,7 @@ export class SmartLayoutBuilder {
    * @returns The layout builder instance.
    */
   addSelectMenu(menu: AnySelectMenu): this {
-    if (!SELECT_TYPES.has(menu?.type)) throw new Error('addSelectMenu requires a select menu component');
+    if (!SELECT_TYPES.has(menu?.type)) throw componentValidationError('SMART_LAYOUT_VALIDATION_FAILED', 'addSelectMenu requires a select menu component');
     this.validateComponents([menu]);
     this.components.push(menu);
     return this;

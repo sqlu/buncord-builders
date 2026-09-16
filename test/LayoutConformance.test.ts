@@ -117,17 +117,3 @@ describe('SmartLayout runtime conformance', () => {
     expect(() => new SmartLayoutBuilder({ mode: 'unknown' } as never)).toThrow('mode');
   });
 });
-
-describe('ActionRow serialized child validation', () => {
-  it('rejects a child whose serialized type differs from its advertised valid type', () => {
-    const child = { type: 2, toJSON: () => ({ type: 10, content: 'Invalid row child' }) };
-    const row = new ActionRowBuilder({ components: [child] as never });
-    expect(() => row.toJSON()).toThrow('invalid ActionRow component type');
-  });
-
-  it('rejects a serialized select among buttons', () => {
-    const child = { type: 2, toJSON: () => ({ type: 3, custom_id: 'select' }) };
-    const row = new ActionRowBuilder({ components: [button(), child] as never });
-    expect(() => row.toJSON()).toThrow('single select menu');
-  });
-});

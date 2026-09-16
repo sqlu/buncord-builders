@@ -1,3 +1,4 @@
+import { componentValidationError } from '../utils/ComponentError.ts';
 import { ComponentType } from '../enums.ts';
 import type { APIThumbnailComponent } from '../types.ts';
 import type { CheckMediaUrl, CheckMaxLength } from '../utils/guards.ts';
@@ -130,7 +131,7 @@ class ThumbnailBuilderClass extends BaseComponent<Partial<APIThumbnailComponent>
    */
   setURL(url: CheckMediaUrl<string> & CheckMaxLength<string, 2048, 'url'>): this {
     if (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('attachment://'))
-      throw new Error(`url must be http/https or attachment:// (got "${url}")`);
+      throw componentValidationError('THUMBNAIL_VALIDATION_FAILED', `url must be http/https or attachment:// (got "${url}")`);
     this.validateLength(url, MAX_MEDIA_URL_LENGTH, 'url');
     this.data.media = { url };
     return this;
@@ -176,7 +177,7 @@ class ThumbnailBuilderClass extends BaseComponent<Partial<APIThumbnailComponent>
    * @throws If no URL has been set.
    */
   override toJSON(): APIThumbnailComponent {
-    if (!this.data.media?.url) throw new Error('need a media url to serialize toJSON');
+    if (!this.data.media?.url) throw componentValidationError('THUMBNAIL_VALIDATION_FAILED', 'need a media url to serialize toJSON');
     return this.data as APIThumbnailComponent;
   }
 }

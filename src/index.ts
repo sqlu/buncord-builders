@@ -28,4 +28,17 @@ export type {
   ExtractFileUploadIds,
 } from './utils/guards.ts';
 
+export { SPEC_PROVENANCE, type SpecException, type RuleVerification } from './utils/ComponentConstraints.ts';
+export {
+  componentError,
+  isComponentError,
+  type ComponentError,
+  type ComponentErrorCode,
+  type ComponentErrorDetails,
+} from './utils/ComponentError.ts';
+export {
+  generateComponentCode,
+  type ComponentCodeGeneratorOptions,
+} from './utils/ComponentCodeGenerator.ts';
+
 export * from './builders/index.ts';

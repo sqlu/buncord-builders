@@ -1,3 +1,4 @@
+import { componentValidationError } from '../utils/ComponentError.ts';
 import { ComponentType } from '../enums.ts';
 import type { APIRadioGroupComponent, APIRadioGroupOption } from '../types.ts';
 import type {
@@ -136,18 +137,18 @@ class RadioGroupOptionBuilderClass {
     if (!opts) return;
     const val = opts.value as string | undefined;
     if (val !== undefined) {
-      if (val.length < 1) throw new Error('value needs to be at least 1 character');
-      if (val.length > 100) throw new Error(`value is too long, max is 100 characters but got ${val.length}`);
+      if (val.length < 1) throw componentValidationError('RADIO_GROUP_VALIDATION_FAILED', 'value needs to be at least 1 character');
+      if (val.length > 100) throw componentValidationError('RADIO_GROUP_VALIDATION_FAILED', `value is too long, max is 100 characters but got ${val.length}`);
       this.data.value = val;
     }
     const lbl = opts.label as string | undefined;
     if (lbl !== undefined) {
-      if (lbl.length > 100) throw new Error(`label is too long, max is 100 characters but got ${lbl.length}`);
+      if (lbl.length > 100) throw componentValidationError('RADIO_GROUP_VALIDATION_FAILED', `label is too long, max is 100 characters but got ${lbl.length}`);
       this.data.label = lbl;
     }
     if (opts.description !== undefined) {
       const d = opts.description as string;
-      if (d.length > 100) throw new Error(`description is too long, max is 100 characters but got ${d.length}`);
+      if (d.length > 100) throw componentValidationError('RADIO_GROUP_VALIDATION_FAILED', `description is too long, max is 100 characters but got ${d.length}`);
       this.data.description = d;
     }
     if (opts.default !== undefined) this.data.default = opts.default;
@@ -161,10 +162,10 @@ class RadioGroupOptionBuilderClass {
    */
   setValue(val: CheckMinLength<string, 1, 'value'> & CheckMaxLength<string, 100, 'value'>): this {
     if (val.length < 1) {
-      throw new Error('value needs to be at least 1 character');
+      throw componentValidationError('RADIO_GROUP_VALIDATION_FAILED', 'value needs to be at least 1 character');
     }
     if (val.length > 100) {
-      throw new Error(`value is too long, max is 100 characters but got ${val.length}`);
+      throw componentValidationError('RADIO_GROUP_VALIDATION_FAILED', `value is too long, max is 100 characters but got ${val.length}`);
     }
     this.data.value = val;
     return this;
@@ -178,7 +179,7 @@ class RadioGroupOptionBuilderClass {
    */
   setLabel(lbl: CheckMaxLength<string, 100, 'label'>): this {
     if (lbl.length > 100) {
-      throw new Error(`label is too long, max is 100 characters but got ${lbl.length}`);
+      throw componentValidationError('RADIO_GROUP_VALIDATION_FAILED', `label is too long, max is 100 characters but got ${lbl.length}`);
     }
     this.data.label = lbl;
     return this;
@@ -192,7 +193,7 @@ class RadioGroupOptionBuilderClass {
    */
   setDescription(desc: CheckMaxLength<string, 100, 'description'>): this {
     if (desc.length > 100) {
-      throw new Error(`description is too long, max is 100 characters but got ${desc.length}`);
+      throw componentValidationError('RADIO_GROUP_VALIDATION_FAILED', `description is too long, max is 100 characters but got ${desc.length}`);
     }
     this.data.description = desc;
     return this;
@@ -401,7 +402,7 @@ class RadioGroupBuilderClass extends BaseComponent<Partial<APIRadioGroupComponen
     const cur = this.data.options.length;
     const add = options.length;
     if (cur + add > MAX_OPTIONS)
-      throw new Error(`options size can't be more than ${MAX_OPTIONS}`);
+      throw componentValidationError('RADIO_GROUP_VALIDATION_FAILED', `options size can't be more than ${MAX_OPTIONS}`);
     for (let i = 0; i < add; i++) {
       this.data.options.push(options[i] as unknown as APIRadioGroupOption);
     }
@@ -438,11 +439,11 @@ class RadioGroupBuilderClass extends BaseComponent<Partial<APIRadioGroupComponen
    */
   override toJSON(): APIRadioGroupComponent {
     const data = this.data;
-    if (data.custom_id === undefined) throw new Error('customId is required');
+    if (data.custom_id === undefined) throw componentValidationError('RADIO_GROUP_VALIDATION_FAILED', 'customId is required');
     this.validateCustomId(data.custom_id);
     const len = data.options ? data.options.length : 0;
     if (len < MIN_OPTIONS || len > MAX_OPTIONS) {
-      throw new Error(`options needs between ${MIN_OPTIONS} and ${MAX_OPTIONS} elements, but got ${len}`);
+      throw componentValidationError('RADIO_GROUP_VALIDATION_FAILED', `options needs between ${MIN_OPTIONS} and ${MAX_OPTIONS} elements, but got ${len}`);
     }
 
     const options = serializeEntries<APIRadioGroupOption>(data.options);

@@ -1,3 +1,4 @@
+import { componentValidationError } from '../utils/ComponentError.ts';
 import { ComponentType } from '../enums.ts';
 import type { APIFileComponent } from '../types.ts';
 import type { CheckAttachmentUrl, CheckMaxLength } from '../utils/guards.ts';
@@ -103,7 +104,7 @@ class FileBuilderClass extends BaseComponent<Partial<APIFileComponent>> {
    */
   setURL(url: CheckAttachmentUrl<string>): this {
     if (!url.startsWith('attachment://'))
-      throw new Error(`url must use the attachment:// scheme (got "${url}")`);
+      throw componentValidationError('FILE_VALIDATION_FAILED', `url must use the attachment:// scheme (got "${url}")`);
     this.validateLength(url, MAX_MEDIA_URL_LENGTH, 'url');
     this.data.file = { url };
     return this;
@@ -127,7 +128,7 @@ class FileBuilderClass extends BaseComponent<Partial<APIFileComponent>> {
    * @throws If no URL has been set.
    */
   override toJSON(): APIFileComponent {
-    if (!this.data.file?.url) throw new Error('need file url to toJSON()');
+    if (!this.data.file?.url) throw componentValidationError('FILE_VALIDATION_FAILED', 'need file url to toJSON()');
     return this.data as APIFileComponent;
   }
 }

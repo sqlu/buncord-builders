@@ -12,6 +12,7 @@ import type { LabelBuilder } from './LabelBuilder.ts';
 import type { TextDisplayBuilder } from './TextDisplayBuilder.ts';
 import type { ActionRowBuilder } from './ActionRowBuilder.ts';
 import type { APIModalStructure, APIModalComponent } from '../types.ts';
+import { componentError, componentValidationError } from '../utils/ComponentError.ts';
 
 /** Maximum length of a modal title. */
 const MAX_TITLE_LENGTH = 45;
@@ -171,9 +172,13 @@ class ModalBuilderClass<
     if (!opts) return;
 
     if (opts.title !== undefined) {
-      if (opts.title.length < 1) throw new Error('title is required');
+      if (opts.title.length < 1)
+        throw componentError('title is required', { code: 'MODAL_TITLE_LENGTH_INVALID', fix: 'Call .setTitle() with 1 to 45 characters' });
       if (opts.title.length > MAX_TITLE_LENGTH) {
-        throw new Error(`title is too long, max is ${MAX_TITLE_LENGTH} characters but got ${opts.title.length}`);
+        throw componentError(`title is too long, max is ${MAX_TITLE_LENGTH} characters but got ${opts.title.length}`, {
+          code: 'MODAL_TITLE_LENGTH_INVALID',
+          fix: 'Call .setTitle() with 1 to 45 characters',
+        });
       }
       this.data.title = opts.title;
     }
@@ -181,10 +186,10 @@ class ModalBuilderClass<
     const cid = opts.customId ?? opts.custom_id;
     if (cid !== undefined) {
       if (cid.length < 1) {
-        throw new Error('customId needs to be at least 1 character');
+        throw componentValidationError('MODAL_VALIDATION_FAILED', 'customId needs to be at least 1 character');
       }
       if (cid.length > 100) {
-        throw new Error(`customId is too long, max is 100 characters but got ${cid.length}`);
+        throw componentValidationError('MODAL_VALIDATION_FAILED', `customId is too long, max is 100 characters but got ${cid.length}`);
       }
       this.data.custom_id = cid;
     }
@@ -201,10 +206,16 @@ class ModalBuilderClass<
    */
   setTitle(title: CheckMinLength<string, 1, 'title'> & CheckMaxLength<string, 45, 'title'>): this {
     if (title.length < 1) {
-      throw new Error('title is required');
+      throw componentError('title is required', {
+        code: 'MODAL_TITLE_LENGTH_INVALID',
+        fix: 'Call .setTitle() with 1 to 45 characters',
+      });
     }
     if (title.length > MAX_TITLE_LENGTH) {
-      throw new Error(`title is too long, max is ${MAX_TITLE_LENGTH} characters but got ${title.length}`);
+      throw componentError(`title is too long, max is ${MAX_TITLE_LENGTH} characters but got ${title.length}`, {
+        code: 'MODAL_TITLE_LENGTH_INVALID',
+        fix: 'Call .setTitle() with 1 to 45 characters',
+      });
     }
     this.data.title = title;
     return this;
@@ -217,10 +228,10 @@ class ModalBuilderClass<
    */
   setCustomId(cid: CheckMinLength<string, 1, 'customId'> & CheckMaxLength<string, 100, 'customId'>): this {
     if (cid.length < 1) {
-      throw new Error('customId needs to be at least 1 character');
+      throw componentValidationError('MODAL_VALIDATION_FAILED', 'customId needs to be at least 1 character');
     }
     if (cid.length > 100) {
-      throw new Error(`customId is too long, max is 100 characters but got ${cid.length}`);
+      throw componentValidationError('MODAL_VALIDATION_FAILED', `customId is too long, max is 100 characters but got ${cid.length}`);
     }
     this.data.custom_id = cid;
     return this;
@@ -236,7 +247,7 @@ class ModalBuilderClass<
     components: NewComponents & CheckArrayLength<NewComponents, 1, 5, 'components'>,
   ): ModalBuilderClass<CustomId, NewComponents> {
     if (components.length < MIN_COMPONENTS || components.length > MAX_COMPONENTS)
-      throw new Error(
+      throw componentValidationError('MODAL_VALIDATION_FAILED',
         `components must have between ${MIN_COMPONENTS} and ${MAX_COMPONENTS} entries, but got ${components.length}`,
       );
     this.data.components = components as unknown as ModalComponent[];
@@ -256,7 +267,7 @@ class ModalBuilderClass<
     const cur = this.data.components.length;
     const add = components.length;
     if (cur + add > MAX_COMPONENTS)
-      throw new Error(`components size can't exceed ${MAX_COMPONENTS}`);
+      throw componentValidationError('MODAL_VALIDATION_FAILED', `components size can't exceed ${MAX_COMPONENTS}`);
     for (let i = 0; i < add; i++) {
       this.data.components.push(components[i]!);
     }
@@ -293,7 +304,7 @@ class ModalBuilderClass<
    */
   setLabelComponents(components: LabelBuilder[]): this {
     if (components.length < MIN_COMPONENTS || components.length > MAX_COMPONENTS)
-      throw new Error(
+      throw componentValidationError('MODAL_VALIDATION_FAILED',
         `components must have between ${MIN_COMPONENTS} and ${MAX_COMPONENTS} entries, but got ${components.length}`,
       );
     this.data.components = components;
@@ -308,7 +319,7 @@ class ModalBuilderClass<
    */
   setTextDisplayComponents(components: TextDisplayBuilder[]): this {
     if (components.length < MIN_COMPONENTS || components.length > MAX_COMPONENTS)
-      throw new Error(
+      throw componentValidationError('MODAL_VALIDATION_FAILED',
         `components must have between ${MIN_COMPONENTS} and ${MAX_COMPONENTS} entries, but got ${components.length}`,
       );
     this.data.components = components;
@@ -335,7 +346,7 @@ class ModalBuilderClass<
       ...components,
     );
     if (this.data.components.length < MIN_COMPONENTS || this.data.components.length > MAX_COMPONENTS)
-      throw new Error(
+      throw componentValidationError('MODAL_VALIDATION_FAILED',
         `components must have between ${MIN_COMPONENTS} and ${MAX_COMPONENTS} entries, but got ${this.data.components.length}`,
       );
     return this;
@@ -361,7 +372,7 @@ class ModalBuilderClass<
       ...components,
     );
     if (this.data.components.length < MIN_COMPONENTS || this.data.components.length > MAX_COMPONENTS)
-      throw new Error(
+      throw componentValidationError('MODAL_VALIDATION_FAILED',
         `components must have between ${MIN_COMPONENTS} and ${MAX_COMPONENTS} entries, but got ${this.data.components.length}`,
       );
     return this;
@@ -381,15 +392,28 @@ class ModalBuilderClass<
    */
   toJSON(): APIModalStructure {
     const title = this.data.title;
-    if (title === undefined) throw new Error('title is required to serialize a modal');
+    if (title === undefined) {
+      throw componentError('title is required to serialize a modal', {
+        code: 'MODAL_TITLE_LENGTH_INVALID',
+        fix: 'Call .setTitle() with 1 to 45 characters',
+      });
+    }
 
     const customId = this.data.custom_id;
-    if (customId === undefined) throw new Error('customId is required to serialize a modal');
+    if (customId === undefined) {
+      throw componentError('customId is required to serialize a modal', {
+        code: 'MODAL_CUSTOM_ID_REQUIRED',
+        fix: 'Call .setCustomId() with 1 to 100 characters',
+      });
+    }
 
     const comps = this.data.components;
     const len = comps ? comps.length : 0;
     if (len < MIN_COMPONENTS || len > MAX_COMPONENTS) {
-      throw new Error(`components must have between ${MIN_COMPONENTS} and ${MAX_COMPONENTS} entries, but got ${len}`);
+      throw componentError(`components must have between ${MIN_COMPONENTS} and ${MAX_COMPONENTS} entries, but got ${len}`, {
+        code: 'MODAL_COMPONENTS_LIMIT',
+        fix: `Ensure the modal contains between ${MIN_COMPONENTS} and ${MAX_COMPONENTS} components`,
+      });
     }
 
     const serializedComps = new Array<APIModalComponent>(len);

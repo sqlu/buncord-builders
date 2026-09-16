@@ -45,8 +45,4 @@ Keep the package focused on small, typed Discord payload builders for Bun, witho
 
 ```sh
 bun run benchmark:ci
-bun run benchmark:payload
-bun run benchmark:native -- --iterations=2000 --trials=7 --warmup=500
-bun run benchmark:native -- --verify-only
 ```
-

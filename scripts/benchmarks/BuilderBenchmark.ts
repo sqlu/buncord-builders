@@ -116,7 +116,7 @@ export function runBuilderBenchmark(): { discord: Measurements; buncord: Measure
     for (const phase of ['construction', 'conversion', 'encoding', 'combined', 'total'] as const) {
       const values = sample.map(value => value[phase]);
       summary[phase] = median(values);
-      console.log(`  ${phase}: ${summary[phase].toFixed(2)} ms median (${Math.min(...values).toFixed(2)}–${Math.max(...values).toFixed(2)})`);
+      console.log(`  ${phase}: ${summary[phase].toFixed(2)} ms median (${Math.min(...values).toFixed(2)} to ${Math.max(...values).toFixed(2)})`);
     }
     return summary;
   });

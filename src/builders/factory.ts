@@ -1,3 +1,4 @@
+import { componentValidationError } from '../utils/ComponentError.ts';
 import { ComponentType } from '../enums.ts';
 import { BaseComponent, resolveRaw } from './base.ts';
 import { ActionRowBuilder } from './ActionRowBuilder.ts';
@@ -63,14 +64,14 @@ export class ComponentFactory {
    * @throws If payload is empty, has no type, or isn't supported.
    */
   public static from(data: APIComponent | Record<string, unknown>): BaseComponent {
-    if (!data) throw new Error('data is null or undefined');
+    if (!data) throw componentValidationError('COMPONENT_FACTORY_ERROR', 'data is null or undefined');
     const raw = resolveRaw(data);
 
     if (!raw || typeof raw.type !== 'number')
-      throw new Error('missing component type in the payload');
+      throw componentValidationError('COMPONENT_FACTORY_ERROR', 'missing component type in the payload');
 
     const ctor = registry[raw.type];
-    if (!ctor) throw new Error(`unsupported component type: ${raw.type}`);
+    if (!ctor) throw componentValidationError('COMPONENT_FACTORY_ERROR', `unsupported component type: ${raw.type}`);
 
     return ctor.from(raw);
   }

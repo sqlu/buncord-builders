@@ -11,6 +11,7 @@ import type {
   ValidateSelectMenuRequired,
 } from '../utils/guards.ts';
 import { BaseComponent, resolveRaw } from './base.ts';
+import { componentError, componentValidationError } from '../utils/ComponentError.ts';
 
 /** Maximum number of file type filters a file upload may whitelist. */
 const MAX_FILE_TYPES = 10;
@@ -159,9 +160,15 @@ class FileUploadBuilderClass extends BaseComponent<Partial<APIFileUploadComponen
     if (min !== undefined) this.validateRange(min, 0, 10, 'minValues');
     if (max !== undefined) this.validateRange(max, 1, 10, 'maxValues');
     if (min !== undefined && max !== undefined && min > max)
-      throw new Error(`minValues can't be more than maxValues (you set minValues to ${min} and maxValues to ${max})`);
+      throw componentError(`minValues can't be more than maxValues (you set minValues to ${min} and maxValues to ${max})`, {
+        code: 'FILE_UPLOAD_MIN_EXCEEDS_MAX',
+        fix: 'Ensure minValues is less than or equal to maxValues',
+      });
     if (min === 0 && required !== false)
-      throw new Error('minValues can only be 0 if required is false');
+      throw componentError('minValues can only be 0 if required is false', {
+        code: 'FILE_UPLOAD_MIN_ZERO_REQUIRES_OPTIONAL',
+        fix: 'Omit minValues, set it to at least 1, or set required to false',
+      });
   }
 
   /**
@@ -172,13 +179,13 @@ class FileUploadBuilderClass extends BaseComponent<Partial<APIFileUploadComponen
    */
   private validateFileTypes(fileTypes: readonly string[]): void {
     if (fileTypes.length > MAX_FILE_TYPES)
-      throw new Error(`fileTypes can't have more than ${MAX_FILE_TYPES} entries, but got ${fileTypes.length}`);
+      throw componentValidationError('FILE_UPLOAD_VALIDATION_FAILED', `fileTypes can't have more than ${MAX_FILE_TYPES} entries, but got ${fileTypes.length}`);
     for (let i = 0; i < fileTypes.length; i++) {
-      if (!fileTypes[i]) throw new Error(`fileTypes[${i}] must be a non-empty file extension`);
+      if (!fileTypes[i]) throw componentValidationError('FILE_UPLOAD_VALIDATION_FAILED', `fileTypes[${i}] must be a non-empty file extension`);
       const fileType = fileTypes[i]!;
       if (fileType !== 'image' && fileType !== 'video' && fileType !== 'audio' &&
         !(fileType.startsWith('.') && fileType.length > 1)) {
-        throw new Error(`fileTypes[${i}] must be image, video, audio, or a dot-prefixed extension`);
+        throw componentValidationError('FILE_UPLOAD_VALIDATION_FAILED', `fileTypes[${i}] must be image, video, audio, or a dot-prefixed extension`);
       }
     }
   }
@@ -308,7 +315,7 @@ class FileUploadBuilderClass extends BaseComponent<Partial<APIFileUploadComponen
    * @returns The JSON representation.
    */
   override toJSON(): APIFileUploadComponent {
-    if (this.data.custom_id === undefined) throw new Error('customId is required');
+    if (this.data.custom_id === undefined) throw componentValidationError('FILE_UPLOAD_VALIDATION_FAILED', 'customId is required');
     this.validateCustomId(this.data.custom_id);
     this.validateFileUploadValues(this.data.min_values, this.data.max_values);
     if (this.data.file_types !== undefined) this.validateFileTypes(this.data.file_types);

@@ -1,3 +1,4 @@
+import { componentValidationError } from './ComponentError.ts';
 import { MAX_TREE_COMPONENTS, MAX_TREE_TEXT_LENGTH } from './ComponentConstraints.ts';
 import type { AuditContext } from './ComponentAudit.ts';
 
@@ -16,7 +17,7 @@ interface TreeLimitsState {
  */
 function scanTreeLimits(node: unknown, state: TreeLimitsState): void {
   if (!node || typeof node !== 'object') return;
-  if (state.ancestors.has(node)) throw new Error('component tree is cyclic');
+  if (state.ancestors.has(node)) throw componentValidationError('COMPONENT_TREE_VALIDATION_FAILED', 'component tree is cyclic');
   state.ancestors.add(node);
   try {
     scanTreeContents(node, state);
@@ -83,9 +84,9 @@ export function validateComponentTree(root: unknown, context: AuditContext = 'me
   scanTreeLimits(root, state);
 
   if (state.count > MAX_TREE_COMPONENTS) {
-    throw new Error(`too many components, discord limit is ${MAX_TREE_COMPONENTS} but got ${state.count}`);
+    throw componentValidationError('COMPONENT_TREE_VALIDATION_FAILED', `too many components, discord limit is ${MAX_TREE_COMPONENTS} but got ${state.count}`);
   }
   if (state.textLength > MAX_TREE_TEXT_LENGTH) {
-    throw new Error(`total text is too long, max ${MAX_TREE_TEXT_LENGTH} characters but got ${state.textLength}`);
+    throw componentValidationError('COMPONENT_TREE_VALIDATION_FAILED', `total text is too long, max ${MAX_TREE_TEXT_LENGTH} characters but got ${state.textLength}`);
   }
 }

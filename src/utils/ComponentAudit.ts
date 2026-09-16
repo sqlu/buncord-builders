@@ -3,6 +3,7 @@ import {
   MAX_TREE_COMPONENTS, MAX_TREE_TEXT_LENGTH, MAX_COMPONENT_ID, AUDIT_TEXT_FIELDS,
   SELECT_MENU_TYPES, INPUT_TYPES, SELECT_INTEGER_FIELDS, COMPONENT_INTEGER_FIELDS,
   CONTAINER_CHILD_TYPES, SELECT_DEFAULT_VALUE_TYPES,
+  LABEL_CHILD_TYPES,
 } from './ComponentConstraints.ts';
 
 /**
@@ -786,6 +787,30 @@ function auditFileUpload(payload: Record<string, unknown>, path: string, state: 
   }
 }
 
+function auditLabel(payload: Record<string, unknown>, path: string, state: AuditState): void {
+  const label = payload.label;
+  if (typeof label !== 'string' || label.length < 1) {
+    report(state, 'error', 'Label text is required', path,
+      'Set label to a string of 1 to 45 characters', 'LABEL_LABEL_REQUIRED');
+  } else if (label.length > 45) {
+    report(state, 'error', `label is too long, max is 45 characters but got ${label.length}`, path,
+      'Shorten label to 45 characters or fewer', 'STRING_TOO_LONG');
+  }
+
+  const component = payload.component;
+  if (!component || typeof component !== 'object') {
+    report(state, 'error', 'Label component is required', path,
+      'Set component to a supported modal input', 'LABEL_COMPONENT_REQUIRED');
+    return;
+  }
+
+  const childType = (component as { type?: unknown }).type;
+  if (typeof childType !== 'number' || !LABEL_CHILD_TYPES.has(childType)) {
+    report(state, 'error', `Label child has invalid component type ${String(childType)}`, path,
+      'Use a text input, select menu, checkbox, radio group or file upload', 'LABEL_INVALID_CHILD_TYPE');
+  }
+}
+
 function auditComponentIdentity(
   payload: Record<string, unknown>,
   path: string,
@@ -911,6 +936,17 @@ function auditComponent(
     case ComponentType.CheckboxGroup: {
       auditOptionGroup(payload, 'Checkbox group', 'CHECKBOX_GROUP_OPTIONS_LIMIT', path, state, 1);
       const min = readAlias(payload, 'min_values', 'minValues');
+      const max = readAlias(payload, 'max_values', 'maxValues');
+      if (typeof min === 'number' && typeof max === 'number' && min > max) {
+        report(
+          state,
+          'error',
+          `Checkbox group min_values (${min}) cannot exceed max_values (${max})`,
+          path,
+          'Ensure min_values is less than or equal to max_values',
+          'CHECKBOX_GROUP_MIN_EXCEEDS_MAX',
+        );
+      }
       if (min === 0 && payload.required !== false) {
         report(
           state,
@@ -923,6 +959,9 @@ function auditComponent(
       }
       return;
     }
+    case ComponentType.Label:
+      auditLabel(payload, path, state);
+      return;
     case ComponentType.FileUpload:
       auditFileUpload(payload, path, state);
       return;
@@ -955,6 +994,15 @@ function auditModal(payload: Record<string, unknown>, path: string, state: Audit
       'Call .setTitle() with a title of 1 to 45 characters',
       'MODAL_TITLE_LENGTH_INVALID',
     );
+  }
+
+  const customId = readAlias(payload, 'custom_id', 'customId');
+  if (typeof customId !== 'string') {
+    report(state, 'error', 'Modal custom_id is required and must be a string', path,
+      'Call .setCustomId() with 1 to 100 characters', 'MODAL_CUSTOM_ID_REQUIRED');
+  } else if (customId.length < 1 || customId.length > 100) {
+    report(state, 'error', `custom_id must be between 1 and 100 characters (got ${customId.length})`, path,
+      'Use a non-empty custom_id no longer than 100 characters', 'CUSTOM_ID_LENGTH_INVALID');
   }
 }
 
@@ -1008,10 +1056,7 @@ function auditNodeContents(node: object, path: string, context: AuditContext, st
     state.count++;
     auditComponentIdentity(payload, path, state);
     auditComponent(payload, type, path, context, state);
-  } else if (
-    payload.title !== undefined &&
-    readAlias(payload, 'custom_id', 'customId') !== undefined
-  ) {
+  } else if (context === 'modal' && path === '') {
     auditModal(payload, path, state);
   }
 
@@ -1060,7 +1105,11 @@ export function auditComponentTree(root: unknown, options?: { structured?: boole
   const rootObject = root && typeof root === 'object' ? root as Record<string, unknown> : undefined;
   const rootData = rootObject?.data && typeof rootObject.data === 'object'
     ? rootObject.data as Record<string, unknown> : rootObject;
-  const context = options?.context ?? (rootData?.title !== undefined ? 'modal' : 'message');
+  const looksLikeModal = rootData !== undefined
+    && typeof rootData.type !== 'number'
+    && (rootData.title !== undefined
+      || (Array.isArray(rootData.components) && readAlias(rootData, 'custom_id', 'customId') !== undefined));
+  const context = options?.context ?? (looksLikeModal ? 'modal' : 'message');
   const state: AuditState = {
     issues: [],
     customIds: new Set<string>(),

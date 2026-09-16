@@ -1,3 +1,4 @@
+import { componentValidationError } from '../utils/ComponentError.ts';
 import { ButtonStyle, ComponentType } from '../enums.ts';
 import type { APIMessageComponentEmoji, APIButtonComponent } from '../types.ts';
 import type {
@@ -228,10 +229,10 @@ class ButtonBuilderClass extends BaseComponent<Partial<APIButtonComponent>> {
 
     const style = opts.style ?? ButtonStyle.Primary;
     if (!Number.isInteger(style) || style < ButtonStyle.Primary || style > ButtonStyle.Premium)
-      throw new Error('style must be a button style between 1 and 6');
+      throw componentValidationError('BUTTON_VALIDATION_FAILED', 'style must be a button style between 1 and 6');
     const label = opts.label;
     if (label !== undefined && label.length > MAX_LABEL_LENGTH) {
-      throw new Error(`label is too long, max is ${MAX_LABEL_LENGTH} characters but got ${label.length}`);
+      throw componentValidationError('BUTTON_VALIDATION_FAILED', `label is too long, max is ${MAX_LABEL_LENGTH} characters but got ${label.length}`);
     }
 
     const payload: Partial<APIButtonComponent> = { type: ComponentType.Button, style };
@@ -240,10 +241,10 @@ class ButtonBuilderClass extends BaseComponent<Partial<APIButtonComponent>> {
       const url = opts.url;
       if (url !== undefined) {
         if (url.length > MAX_URL_LENGTH) {
-          throw new Error(`url is too long, max is ${MAX_URL_LENGTH} characters but got ${url.length}`);
+          throw componentValidationError('BUTTON_VALIDATION_FAILED', `url is too long, max is ${MAX_URL_LENGTH} characters but got ${url.length}`);
         }
         if (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('discord://')) {
-          throw new Error(`url must be a valid http, https, or discord URL, got "${url}"`);
+          throw componentValidationError('BUTTON_VALIDATION_FAILED', `url must be a valid http, https, or discord URL, got "${url}"`);
         }
         payload.url = url;
       }
@@ -254,7 +255,7 @@ class ButtonBuilderClass extends BaseComponent<Partial<APIButtonComponent>> {
       const customId = opts.customId ?? opts.custom_id;
       if (customId !== undefined) {
         if (customId.length < 1 || customId.length > 100) {
-          throw new Error(`customId is invalid, must be between 1 and 100 characters`);
+          throw componentValidationError('BUTTON_VALIDATION_FAILED', `customId is invalid, must be between 1 and 100 characters`);
         }
         payload.custom_id = customId;
       }
@@ -376,15 +377,15 @@ class ButtonBuilderClass extends BaseComponent<Partial<APIButtonComponent>> {
       this.validateHttpUrl(data.url ?? '', 'url');
       this.validateLength(data.url, MAX_URL_LENGTH, 'url');
       if (data.custom_id !== undefined || data.sku_id !== undefined)
-        throw new Error('Link buttons cannot have customId or skuId');
+        throw componentValidationError('BUTTON_VALIDATION_FAILED', 'Link buttons cannot have customId or skuId');
     } else if (data.style === ButtonStyle.Premium) {
-      if (typeof data.sku_id !== 'string' || !data.sku_id) throw new Error('skuId is required');
+      if (typeof data.sku_id !== 'string' || !data.sku_id) throw componentValidationError('BUTTON_VALIDATION_FAILED', 'skuId is required');
       if (data.custom_id !== undefined || data.url !== undefined || data.label !== undefined || data.emoji !== undefined)
-        throw new Error('Premium buttons cannot have customId, url, label or emoji');
+        throw componentValidationError('BUTTON_VALIDATION_FAILED', 'Premium buttons cannot have customId, url, label or emoji');
     } else {
       this.validateCustomId(data.custom_id ?? '');
       if (data.url !== undefined || data.sku_id !== undefined)
-        throw new Error('Interactive buttons cannot have url or skuId');
+        throw componentValidationError('BUTTON_VALIDATION_FAILED', 'Interactive buttons cannot have url or skuId');
     }
     this.validateLength(data.label, MAX_LABEL_LENGTH, 'label');
     return data as APIButtonComponent;

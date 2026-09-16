@@ -1,3 +1,4 @@
+import { componentValidationError } from '../utils/ComponentError.ts';
 import { ComponentType } from '../enums.ts';
 import type { APICheckboxComponent } from '../types.ts';
 import { BaseComponent, resolveRaw } from './base.ts';
@@ -144,7 +145,7 @@ class CheckboxBuilderClass extends BaseComponent<Partial<APICheckboxComponent>> 
    * @see {@link https://docs.discord.com/developers/components/reference#checkbox Checkbox Discord Doc}
    */
   override toJSON(): APICheckboxComponent {
-    if (this.data.custom_id === undefined) throw new Error('customId is required');
+    if (this.data.custom_id === undefined) throw componentValidationError('CHECKBOX_VALIDATION_FAILED', 'customId is required');
     this.validateCustomId(this.data.custom_id);
     return this.data as APICheckboxComponent;
   }
