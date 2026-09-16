@@ -284,11 +284,11 @@ Sample generated on **2026-09-16 · Bun 1.4.2 · linux x64**. Each trial builds 
 
 | Work for 100000 rows | `@discordjs/builders` | `@buncord/builders` |
 | :--- | ---: | ---: |
-| Construction | 107.94 ms | 21.46 ms |
-| Conversion with `toJSON()` | 39.36 ms | 10.36 ms |
-| Construction + conversion | 149.40 ms | **31.54 ms** |
+| Construction | 108.01 ms | 19.98 ms |
+| Conversion with `toJSON()` | 38.72 ms | 12.88 ms |
+| Construction + conversion | 146.86 ms | **32.44 ms** |
 
-That is approximately **4.7× throughput** for construction and conversion on this sample, or **0.315 µs per row**. Phase medians need not sum to the total median. Payload equality is checked before timing and encoded outputs are consumed. This excludes HTTP and Discord processing. Hardware, GC, runtime, payload and validation behavior affect results; this is not a latency guarantee or an equivalent-validation comparison.
+That is approximately **4.5× throughput** for construction and conversion on this sample, or **0.324 µs per row**. Phase medians need not sum to the total median. Payload equality is checked before timing and encoded outputs are consumed. This excludes HTTP and Discord processing. Hardware, GC, runtime, payload and validation behavior affect results; this is not a latency guarantee or an equivalent-validation comparison.
 
 ```sh
 bun run benchmark:ci

@@ -132,8 +132,8 @@ const svgTemplate = `<svg width="880" height="500" viewBox="0 0 880 500" fill="n
       <circle cx="3061.172" cy="364" r="335" id="svg_1"/>
     </clipPath>
     <linearGradient id="accent" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#FF6BA8"/>
-      <stop offset="100%" stop-color="#FF2D86"/>
+      <stop offset="0%" stop-color="#4F9CE0"/>
+      <stop offset="100%" stop-color="#3178C6"/>
     </linearGradient>
     <linearGradient id="neutral" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="#3C4249"/>
@@ -155,14 +155,14 @@ const svgTemplate = `<svg width="880" height="500" viewBox="0 0 880 500" fill="n
       font-variant-numeric: tabular-nums;
       -webkit-font-smoothing: antialiased;
     }
-    .eyebrow { font-size: 10.5px; font-weight: 600; letter-spacing: 1.6px; fill: #FF6BA8; }
+    .eyebrow { font-size: 10.5px; font-weight: 600; letter-spacing: 1.6px; fill: #4F9CE0; }
     .title { font-size: 25px; font-weight: 600; letter-spacing: -0.5px; fill: #F5F5F7; }
     .subtitle { font-size: 11.5px; font-weight: 400; fill: #86868B; }
     .legend { font-size: 11.5px; font-weight: 500; fill: #B4B7BC; }
     .tick { font-size: 10.5px; font-weight: 400; fill: #6E7278; text-anchor: end; }
     .value { font-size: 13px; font-weight: 600; text-anchor: middle; }
     .value.muted { fill: #9AA0A6; }
-    .value.accent { fill: #FF8FBC; }
+    .value.accent { fill: #8CC0EE; }
     .group-label { font-size: 12.5px; font-weight: 500; fill: #D7D9DC; text-anchor: middle; letter-spacing: -0.1px; }
     .pill { font-size: 11px; font-weight: 600; fill: #F5F5F7; text-anchor: middle; letter-spacing: -0.1px; }
     .pill-flat { fill: #8E9297; font-weight: 500; }
@@ -230,8 +230,8 @@ console.log("Updated assets/benchmark.svg successfully.");
 const speedBadgeSvg = `<svg width="220" height="28" viewBox="0 0 220 28" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="grad-ours" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#FF3B92"/>
-      <stop offset="100%" stop-color="#FF85B6"/>
+      <stop offset="0%" stop-color="#4F9CE0"/>
+      <stop offset="100%" stop-color="#3178C6"/>
     </linearGradient>
   </defs>
   <rect x="0.5" y="0.5" width="219" height="27" rx="6" fill="#18191c" stroke="#30363d" stroke-width="1"/>
