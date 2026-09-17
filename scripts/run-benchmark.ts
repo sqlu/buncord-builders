@@ -224,6 +224,7 @@ ${gridMarkup}
 ${barsMarkup}
 </svg>`;
 
+const benchmarkAssetVersion = Bun.hash(svgTemplate).toString(36);
 await Bun.write("assets/benchmark.svg", svgTemplate);
 console.log("Updated assets/benchmark.svg successfully.");
 
@@ -254,7 +255,7 @@ if (start < 0 || end < 0) throw new Error('README benchmark section markers are 
 const discordPackage = await Bun.file(new URL('../node_modules/@discordjs/builders/package.json', import.meta.url)).json() as { version: string };
 const section = `
 
-![Benchmark chart](./assets/benchmark.svg)
+![Benchmark chart](./assets/benchmark.svg?v=${benchmarkAssetVersion})
 
 **Measure the workload you actually send.** \`toJSON()\` produces a JavaScript object; encoding it with \`JSON.stringify()\` is a separate cost.
 

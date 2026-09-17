@@ -276,19 +276,19 @@ pinned by a regression test.
 
 ## Benchmarks
 
-![Benchmark chart](./assets/benchmark.svg)
+![Benchmark chart](./assets/benchmark.svg?v=3ons9a2fxqjb2)
 
 **Measure the workload you actually send.** `toJSON()` produces a JavaScript object; encoding it with `JSON.stringify()` is a separate cost.
 
-Sample generated on **2026-09-16 · Bun 1.4.2 · linux x64**. Each trial builds **100000 rows**: 50000 with one button and 50000 with one string select. The script warms up each library, alternates their order and reports measured medians and ranges. See the console output for trial counts and the CPU model. Installed comparison: `@discordjs/builders 1.14.1`.
+Sample generated on **2026-09-17 · Bun 1.4.2 · linux x64**. Each trial builds **100000 rows**: 50000 with one button and 50000 with one string select. The script warms up each library, alternates their order and reports measured medians and ranges. See the console output for trial counts and the CPU model. Installed comparison: `@discordjs/builders 1.14.1`.
 
 | Work for 100000 rows | `@discordjs/builders` | `@buncord/builders` |
 | :--- | ---: | ---: |
-| Construction | 144.66 ms | 20.75 ms |
-| Conversion with `toJSON()` | 42.52 ms | 15.13 ms |
-| Construction + conversion | 187.19 ms | **32.41 ms** |
+| Construction | 141.82 ms | 22.30 ms |
+| Conversion with `toJSON()` | 59.85 ms | 14.10 ms |
+| Construction + conversion | 207.36 ms | **37.37 ms** |
 
-That is approximately **5.8× throughput** for construction and conversion on this sample, or **0.324 µs per row**. Phase medians need not sum to the total median. Payload equality is checked before timing and encoded outputs are consumed. This excludes HTTP and Discord processing. Hardware, GC, runtime, payload and validation behavior affect results; this is not a latency guarantee or an equivalent-validation comparison.
+That is approximately **5.5× throughput** for construction and conversion on this sample, or **0.374 µs per row**. Phase medians need not sum to the total median. Payload equality is checked before timing and encoded outputs are consumed. This excludes HTTP and Discord processing. Hardware, GC, runtime, payload and validation behavior affect results; this is not a latency guarantee or an equivalent-validation comparison.
 
 ```sh
 bun run benchmark:ci

@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
-it('updates only the benchmark section of the curated README in CI', () => {
+it('keeps the generated benchmark SVG synchronized with the curated README', () => {
   const directory = mkdtempSync(join(tmpdir(), 'BuncordBenchmarkTest-'));
   const readme = '# Curated README\n\n## Benchmarks\n\nKeep this section.\n\n## Component Architecture\n\nKeep this too.\n';
   try {
@@ -21,6 +21,20 @@ it('updates only the benchmark section of the curated README in CI', () => {
     expect(updated).not.toContain('Keep this section.');
     expect(updated).toContain('JSON.stringify()');
     expect(updated).toContain('10 rows');
+
+    const stdout = new TextDecoder().decode(result.stdout);
+    const measuredCombined = [...stdout.matchAll(/^\s+combined: ([\d.]+) ms median/gm)]
+      .map(match => Number(match[1]));
+    const svg = readFileSync(join(directory, 'assets/benchmark.svg'), 'utf8');
+    const displayedCombined = [...svg.matchAll(/class="value [^"]+"[^>]*>([\d.]+)<\/text>/g)]
+      .slice(-2)
+      .map(match => Number(match[1]));
+
+    expect(measuredCombined).toHaveLength(2);
+    expect(displayedCombined).toHaveLength(2);
+    expect(Math.abs(displayedCombined[0]! - measuredCombined[0]!)).toBeLessThanOrEqual(0.06);
+    expect(Math.abs(displayedCombined[1]! - measuredCombined[1]!)).toBeLessThanOrEqual(0.06);
+    expect(updated).toMatch(/!\[Benchmark chart\]\(\.\/assets\/benchmark\.svg\?v=[a-z0-9]+\)/);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
