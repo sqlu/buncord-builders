@@ -276,7 +276,7 @@ pinned by a regression test.
 
 ## Benchmarks
 
-![Benchmark chart](./assets/benchmark.svg?v=3ons9a2fxqjb2)
+![Benchmark chart](./assets/benchmark.svg?v=3di4cibxhpabi)
 
 **Measure the workload you actually send.** `toJSON()` produces a JavaScript object; encoding it with `JSON.stringify()` is a separate cost.
 
@@ -284,11 +284,11 @@ Sample generated on **2026-09-17 · Bun 1.4.2 · linux x64**. Each trial builds 
 
 | Work for 100000 rows | `@discordjs/builders` | `@buncord/builders` |
 | :--- | ---: | ---: |
-| Construction | 141.82 ms | 22.30 ms |
-| Conversion with `toJSON()` | 59.85 ms | 14.10 ms |
-| Construction + conversion | 207.36 ms | **37.37 ms** |
+| Construction | 94.59 ms | 14.92 ms |
+| Conversion with `toJSON()` | 33.84 ms | 13.16 ms |
+| Construction + conversion | 122.77 ms | **28.08 ms** |
 
-That is approximately **5.5× throughput** for construction and conversion on this sample, or **0.374 µs per row**. Phase medians need not sum to the total median. Payload equality is checked before timing and encoded outputs are consumed. This excludes HTTP and Discord processing. Hardware, GC, runtime, payload and validation behavior affect results; this is not a latency guarantee or an equivalent-validation comparison.
+That is approximately **4.4× throughput** for construction and conversion on this sample, or **0.281 µs per row**. Phase medians need not sum to the total median. Payload equality is checked before timing and encoded outputs are consumed. This excludes HTTP and Discord processing. Hardware, GC, runtime, payload and validation behavior affect results; this is not a latency guarantee or an equivalent-validation comparison.
 
 ```sh
 bun run benchmark:ci

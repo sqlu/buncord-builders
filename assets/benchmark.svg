@@ -119,49 +119,49 @@
   <line x1="74" y1="388.0" x2="840" y2="388.0" stroke="#FFFFFF" stroke-opacity="0.16" stroke-width="1"/>
   <text x="62" y="392.0" class="tick">0</text>
   <line x1="74" y1="318.0" x2="840" y2="318.0" stroke="#FFFFFF" stroke-opacity="0.05" stroke-width="1"/>
-  <text x="62" y="322.0" class="tick">100</text>
+  <text x="62" y="322.0" class="tick">50</text>
   <line x1="74" y1="248.0" x2="840" y2="248.0" stroke="#FFFFFF" stroke-opacity="0.05" stroke-width="1"/>
-  <text x="62" y="252.0" class="tick">200</text>
+  <text x="62" y="252.0" class="tick">100</text>
   <line x1="74" y1="178.0" x2="840" y2="178.0" stroke="#FFFFFF" stroke-opacity="0.05" stroke-width="1"/>
-  <text x="62" y="182.0" class="tick">300</text>
+  <text x="62" y="182.0" class="tick">150</text>
 
   <g class="rise" style="animation-delay:0.00s">
-    <path d="M 168,388 L 168,295.72896729999997 Q 168,288.72896729999997 175,288.72896729999997 L 207,288.72896729999997 Q 214,288.72896729999997 214,295.72896729999997 L 214,388 Z" fill="url(#neutral)"/>
+    <path d="M 168,388 L 168,262.57445219999994 Q 168,255.57445219999994 175,255.57445219999994 L 207,255.57445219999994 Q 214,255.57445219999994 214,262.57445219999994 L 214,388 Z" fill="url(#neutral)"/>
   </g>
   <g class="rise" style="animation-delay:0.07s">
-    <path d="M 226,388 L 226,379.3914636999999 Q 226,372.3914636999999 233,372.3914636999999 L 265,372.3914636999999 Q 272,372.3914636999999 272,379.3914636999999 L 272,388 Z" fill="url(#accent)"/>
+    <path d="M 226,388 L 226,374.11279379999996 Q 226,367.11279379999996 233,367.11279379999996 L 265,367.11279379999996 Q 272,367.11279379999996 272,374.11279379999996 L 272,388 Z" fill="url(#accent)"/>
   </g>
-  <text x="191" y="276.7" class="value muted settle" style="animation-delay:0.46s">141.8</text>
-  <text x="249" y="360.4" class="value accent settle" style="animation-delay:0.53s">22.3</text>
+  <text x="191" y="243.6" class="value muted settle" style="animation-delay:0.46s">94.6</text>
+  <text x="249" y="355.1" class="value accent settle" style="animation-delay:0.53s">14.9</text>
   <text x="220" y="414" class="group-label settle" style="animation-delay:0.58s">Construction</text>
   <g class="settle" style="animation-delay:0.64s">
     <rect x="171" y="426" width="98" height="22" rx="11" fill="#FFFFFF" fill-opacity="0.05" stroke="#FFFFFF" stroke-opacity="0.10" stroke-width="1"/>
-    <text x="220" y="441" class="pill">6.4x faster</text>
+    <text x="220" y="441" class="pill">6.3x faster</text>
   </g>
   <g class="rise" style="animation-delay:0.13s">
-    <path d="M 416,388 L 416,353.10449740000007 Q 416,346.10449740000007 423,346.10449740000007 L 455,346.10449740000007 Q 462,346.10449740000007 462,353.10449740000007 L 462,388 Z" fill="url(#neutral)"/>
+    <path d="M 416,388 L 416,347.6205951999998 Q 416,340.6205951999998 423,340.6205951999998 L 455,340.6205951999998 Q 462,340.6205951999998 462,347.6205951999998 L 462,388 Z" fill="url(#neutral)"/>
   </g>
   <g class="rise" style="animation-delay:0.20s">
-    <path d="M 474,388 L 474,385.13044590000004 Q 474,378.13044590000004 481,378.13044590000004 L 513,378.13044590000004 Q 520,378.13044590000004 520,385.13044590000004 L 520,388 Z" fill="url(#accent)"/>
+    <path d="M 474,388 L 474,376.5804338 Q 474,369.5804338 481,369.5804338 L 513,369.5804338 Q 520,369.5804338 520,376.5804338 L 520,388 Z" fill="url(#accent)"/>
   </g>
-  <text x="439" y="334.1" class="value muted settle" style="animation-delay:0.59s">59.9</text>
-  <text x="497" y="366.1" class="value accent settle" style="animation-delay:0.66s">14.1</text>
+  <text x="439" y="328.6" class="value muted settle" style="animation-delay:0.59s">33.8</text>
+  <text x="497" y="357.6" class="value accent settle" style="animation-delay:0.66s">13.2</text>
   <text x="468" y="414" class="group-label settle" style="animation-delay:0.71s">Conversion</text>
   <g class="settle" style="animation-delay:0.77s">
     <rect x="419" y="426" width="98" height="22" rx="11" fill="#FFFFFF" fill-opacity="0.05" stroke="#FFFFFF" stroke-opacity="0.10" stroke-width="1"/>
-    <text x="468" y="441" class="pill">4.2x faster</text>
+    <text x="468" y="441" class="pill">2.6x faster</text>
   </g>
   <g class="rise" style="animation-delay:0.26s">
-    <path d="M 664,388 L 664,249.8514657 Q 664,242.8514657 671,242.8514657 L 703,242.8514657 Q 710,242.8514657 710,249.8514657 L 710,388 Z" fill="url(#neutral)"/>
+    <path d="M 664,388 L 664,223.12845119999997 Q 664,216.12845119999997 671,216.12845119999997 L 703,216.12845119999997 Q 710,216.12845119999997 710,223.12845119999997 L 710,388 Z" fill="url(#neutral)"/>
   </g>
   <g class="rise" style="animation-delay:0.33s">
-    <path d="M 722,388 L 722,368.83945229999995 Q 722,361.83945229999995 729,361.83945229999995 L 761,361.83945229999995 Q 768,361.83945229999995 768,368.83945229999995 L 768,388 Z" fill="url(#accent)"/>
+    <path d="M 722,388 L 722,355.69322759999994 Q 722,348.69322759999994 729,348.69322759999994 L 761,348.69322759999994 Q 768,348.69322759999994 768,355.69322759999994 L 768,388 Z" fill="url(#accent)"/>
   </g>
-  <text x="687" y="230.9" class="value muted settle" style="animation-delay:0.72s">207.4</text>
-  <text x="745" y="349.8" class="value accent settle" style="animation-delay:0.79s">37.4</text>
+  <text x="687" y="204.1" class="value muted settle" style="animation-delay:0.72s">122.8</text>
+  <text x="745" y="336.7" class="value accent settle" style="animation-delay:0.79s">28.1</text>
   <text x="716" y="414" class="group-label settle" style="animation-delay:0.84s">Combined</text>
   <g class="settle" style="animation-delay:0.90s">
     <rect x="667" y="426" width="98" height="22" rx="11" fill="#FFFFFF" fill-opacity="0.05" stroke="#FFFFFF" stroke-opacity="0.10" stroke-width="1"/>
-    <text x="716" y="441" class="pill">5.5x faster</text>
+    <text x="716" y="441" class="pill">4.4x faster</text>
   </g>
 </svg>
